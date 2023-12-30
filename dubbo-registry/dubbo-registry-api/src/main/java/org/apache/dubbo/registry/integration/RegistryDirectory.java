@@ -169,6 +169,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         setConsumerUrl(url);
         CONSUMER_CONFIGURATION_LISTENER.addNotifyListener(this);
         serviceConfigurationListener = new ReferenceConfigurationListener(this, url);
+        // 调用Registry注册中心，订阅服务信息变更事件
+        // Registry.subscribe()是接口的抽象方法，内部会调用子类的模板方法doSubscribe();
+        // 这里的registry是ZookeeperRegistry，其父类是FailbackRegistry
+        // 因此，里面的逻辑是：
+        // 先调用FailbackRegistry.subscribe()；
+        // 然后调用ZookeeperRegistry.doSubScribe()。
+        // consumer://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=providers,configurators,routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=26742&qos.port=33333&side=consumer&sticky=false&timestamp=1703910783555
         registry.subscribe(url, this);
     }
 
@@ -255,6 +262,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
     private void refreshInvoker(List<URL> invokerUrls) {
         Assert.notNull(invokerUrls, "invokerUrls should not be null");
 
+        // 只有一个empty协议的URL，销毁所有invokers，将forbidden置为true
+        // 所有服务提供者都停止的时候，就会走此逻辑
+        // 正常情况下走else的逻辑
         if (invokerUrls.size() == 1
                 && invokerUrls.get(0) != null
                 && EMPTY_PROTOCOL.equals(invokerUrls.get(0).getProtocol())) {
@@ -264,6 +274,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             destroyAllInvokers(); // Close all invokers
         } else {
             this.forbidden = false; // Allow to access
+            // 将invokerUrls，转化为Invoker Map，内含生成Invoker的逻辑
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
             if (invokerUrls == Collections.<URL>emptyList()) {
                 invokerUrls = new ArrayList<>();
@@ -296,6 +307,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             List<Invoker<T>> newInvokers = Collections.unmodifiableList(new ArrayList<>(newUrlInvokerMap.values()));
             // pre-route and build cache, notice that route cache should build on original Invoker list.
             // toMergeMethodInvokerMap() will wrap some invokers having different groups, those wrapped invokers not should be routed.
+            // 将最新的invokers保存到routerChain中
+            // routerChain是invoker的容器。
             routerChain.setInvokers(newInvokers);
             this.invokers = multiGroup ? toMergeInvokerList(newInvokers) : newInvokers;
             this.urlInvokerMap = newUrlInvokerMap;

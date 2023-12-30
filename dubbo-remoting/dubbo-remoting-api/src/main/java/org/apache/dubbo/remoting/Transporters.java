@@ -75,6 +75,9 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // getTransporter()是通过ExtensionLoader获取的Transporter的扩展点
+        // 默认为NettyTransporter
+        // 另外还有MinaTransporter、GrizzlyTransporter
         return getTransporter().connect(url, handler);
     }
 

@@ -241,7 +241,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
     }
 
     public synchronized T get() {
-        checkAndUpdateSubConfigs();
+        checkAndUpdateSubConfigs(); // 检查配置，如Application
 
         if (destroyed) {
             throw new IllegalStateException("The invoker of ReferenceConfig(" + url + ") has already destroyed!");
@@ -326,7 +326,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
         }
         map.put(REGISTER_IP_KEY, hostToRegistry);
 
-        ref = createProxy(map);
+        ref = createProxy(map); // 核心逻辑，创建Proxy
 
         String serviceKey = URL.buildKey(interfaceName, group, version);
         ApplicationModel.initConsumerModel(serviceKey, buildConsumerModel(serviceKey, attributes));
@@ -349,14 +349,16 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes", "deprecation"})
     private T createProxy(Map<String, String> map) {
-        if (shouldJvmRefer(map)) {
+        if (shouldJvmRefer(map)) { // 是否应该做本地引用，默认不做本地引用
+            // 本地引用，通过InjvmProtocol创建InjvmInvoker
             URL url = new URL(LOCAL_PROTOCOL, LOCALHOST_VALUE, 0, interfaceClass.getName()).addParameters(map);
             invoker = REF_PROTOCOL.refer(interfaceClass, url);
             if (logger.isInfoEnabled()) {
                 logger.info("Using injvm service " + interfaceClass.getName());
             }
         } else {
-            urls.clear(); // reference retry init will add url to urls, lead to OOM
+            urls.clear(); // 清空urls，否则在重试初始化时，可能会导致OOM
+            // 通过配置<dubbo:reference />中url参数，实现的点对点通讯处理逻辑
             if (url != null && url.length() > 0) { // user specified URL, could be peer-to-peer address, or register center's address.
                 String[] us = SEMICOLON_SPLIT_PATTERN.split(url);
                 if (us != null && us.length > 0) {
@@ -374,15 +376,20 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             } else { // assemble URL from register center's configuration
                 // if protocols not injvm checkRegistry
+                // 从注册中心配置里，组装URL
+                // 如果不是injvm协议，就执行以下逻辑
                 if (!LOCAL_PROTOCOL.equalsIgnoreCase(getProtocol())){
-                    checkRegistry();
-                    List<URL> us = loadRegistries(false);
+                    checkRegistry(); // 检测注册中心
+                    List<URL> us = loadRegistries(false); // 加载所有注册中心，并转成URL集合
                     if (CollectionUtils.isNotEmpty(us)) {
                         for (URL u : us) {
                             URL monitorUrl = loadMonitor(u);
                             if (monitorUrl != null) {
                                 map.put(MONITOR_KEY, URL.encode(monitorUrl.toFullString()));
                             }
+                            // 给每个注册中心URL添加refer参数
+                            // refer参数的值，就是服务消费者的基本信息，包括应用名、版本号、引用的接口等。
+                            // registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-consumer&dubbo=2.0.2&pid=25237&qos.port=33333&refer=application%3Ddemo-consumer%26check%3Dfalse%26dubbo%3D2.0.2%26interface%3Dorg.apache.dubbo.demo.DemoService%26lazy%3Dfalse%26methods%3DsayHello%26pid%3D25237%26qos.port%3D33333%26register.ip%3D192.168.1.12%26side%3Dconsumer%26sticky%3Dfalse%26timestamp%3D1703908463566&registry=zookeeper&timestamp=1703908463906
                             urls.add(u.addParameterAndEncoded(REFER_KEY, StringUtils.toQueryString(map)));
                         }
                     }
@@ -392,21 +399,32 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                 }
             }
 
-            if (urls.size() == 1) {
+            if (urls.size() == 1) {  // 只有一个url，可能是单个注册中心，或点对点的服务直连
+                // REF_PROTOCOL是Protocol的自适应扩展Protocol&Adaptive
+                // url.protocol=registry
+                // 因此，这里调用的是RegistryProtocol的refer，创建Invoker
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
+                // 多个url，可能是多注册中心、多服务提供者
                 List<Invoker<?>> invokers = new ArrayList<Invoker<?>>();
                 URL registryURL = null;
-                for (URL url : urls) {
+                for (URL url : urls) {  // 遍历所有的url，创建并获取多个Invoker
+                    // REF_PROTOCOL是Protocol的自适应扩展Protocol&Adaptive
+                    // 根据url.protocol参数，调用XXXProtocol.refer，创建Invoker
                     invokers.add(REF_PROTOCOL.refer(interfaceClass, url));
                     if (REGISTRY_PROTOCOL.equals(url.getProtocol())) {
                         registryURL = url; // use last registry url
                     }
                 }
-                if (registryURL != null) { // registry url is available
+                if (registryURL != null) { //当注册中心可用，给注册中心URL添加cluster参数，指定RegistryAwareCluster
+
                     // use RegistryAwareCluster only when register's CLUSTER is available
                     URL u = registryURL.addParameter(CLUSTER_KEY, RegistryAwareCluster.NAME);
                     // The invoker wrap relation would be: RegistryAwareClusterInvoker(StaticDirectory) -> FailoverClusterInvoker(RegistryDirectory, will execute route) -> Invoker
+                    // 通过CLUSTER将多个Invoker合并成一个Invoker
+                    // 这里的CLUSTER是Cluster的自适应扩展，是上面指定的RegistryAwareCluster。
+                    // 合并的目的是，为调用方提供统一的Invoker接口。
+                    // 合并后的Invoker只不过是封装了多个Invoker，在里面遍历调用子Invoker。如RegistryAwareClusterInvoker
                     invoker = CLUSTER.join(new StaticDirectory(u, invokers));
                 } else { // not a registry url, must be direct invoke.
                     invoker = CLUSTER.join(new StaticDirectory(invokers));
@@ -414,6 +432,9 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             }
         }
 
+        // 强制校验，且invoker不可用时，直接报异常
+        // 这里就是开发时常见的问题，当服务提供者没起时，默认配置下，服务消费者在启动时会抛异常，服务起不来。
+        // 要解决这个问题，就是在<dubbo:reference />里配置check=false。默认check=true。
         if (shouldCheck() && !invoker.isAvailable()) {
             throw new IllegalStateException("Failed to check the status of the service " + interfaceName + ". No provider available for the service " + (group == null ? "" : group + "/") + interfaceName + (version == null ? "" : ":" + version) + " from the url " + invoker.getUrl() + " to the consumer " + NetUtils.getLocalHost() + " use dubbo version " + Version.getVersion());
         }
@@ -430,6 +451,18 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             metadataReportService.publishConsumer(consumerURL);
         }
         // create service proxy
+        // 创建服务代理
+        // PROXY_FACTORY是ProxyFactory的自适应类ProxyFactory&Adaptive
+        // 默认为JavassistProxyFactory
+        // 最终，调用的是JavassistProxyFactory.getProxy()
+        //
+        // 这里的服务代理非常重要，在服务调用的时候，调用的接口，就是这个代理对象。
+        // 这个代理对象：
+        //  1.生成了接口方法的所有代理方；
+        //  2.封装了InvocationHandler，InvocationHandler里封装了invoker，而invoker里面封装了调用远程服务的逻辑。
+        // 服务调用的大致关系是：
+        //  consumer.proxy-> InvocationHandler -> invoker ->
+        //  ExchangeClient -> ExchangeChannel -> NettyChannel -> NioSocketChannel -> provider
         return (T) PROXY_FACTORY.getProxy(invoker);
     }
 

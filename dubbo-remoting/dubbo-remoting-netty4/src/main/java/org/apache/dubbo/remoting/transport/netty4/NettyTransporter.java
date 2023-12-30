@@ -37,6 +37,9 @@ public class NettyTransporter implements Transporter {
 
     @Override
     public Client connect(URL url, ChannelHandler listener) throws RemotingException {
+        // 实例化NettyClient
+        // 在构造里面连接服务
+        // 然后在AbstractClient里，通过模板方法设计模式，调用了AbstractClient.doOpen()
         return new NettyClient(url, listener);
     }
 

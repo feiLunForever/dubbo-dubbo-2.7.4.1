@@ -143,6 +143,8 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doSubscribe(final URL url, final NotifyListener listener) {
         try {
+            // 服务接口为*的订阅逻辑
+            // 默认情况下，执行的是下面else的订阅逻辑
             if (ANY_VALUE.equals(url.getServiceInterface())) {
                 String root = toRootPath();
                 ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
@@ -175,7 +177,13 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     }
                 }
             } else {
-                List<URL> urls = new ArrayList<>();
+                List<URL> urls = new ArrayList<>(); // 订阅服务信息变更事件
+                // 给[/dubbo/服务名]下的节点，添加监听。
+                // 以DemoService为例，会给以下节点添加监听：
+                // 1、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/providers；
+                // 2、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/configurators；
+                // 3、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/routers。
+                // consumer://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=providers,configurators,routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=27252&qos.port=33333&side=consumer&sticky=false&timestamp=1703911240858
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {
@@ -184,16 +192,22 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     }
                     ChildListener zkListener = listeners.get(listener);
                     if (zkListener == null) {
+                        // 创建ChildListener
+                        // 这里的listeners是ChildListener的容器。key=NotifyListener，value=ChildListener
+                        // 下面的内容，首先实例化了一个ChildListener，并在childChanged方法中，调用notify()方法。
                         listeners.putIfAbsent(listener, (parentPath, currentChilds) -> ZookeeperRegistry.this.notify(url, listener, toUrlsWithEmpty(url, parentPath, currentChilds)));
+                        // 返回刚才创建的ChildListener
                         zkListener = listeners.get(listener);
                     }
+                    //创建path（如果不存在再创建）
                     zkClient.create(path, false);
+                    // 通过zkClient，给当前目录添加监听
                     List<String> children = zkClient.addChildListener(path, zkListener);
                     if (children != null) {
                         urls.addAll(toUrlsWithEmpty(url, path, children));
                     }
                 }
-                notify(url, listener, urls);
+                notify(url, listener, urls); // 订阅的时候，直接调用notify()，自己通知一次，完成invoker的首次创建
             }
         } catch (Throwable e) {
             throw new RpcException("Failed to subscribe " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);

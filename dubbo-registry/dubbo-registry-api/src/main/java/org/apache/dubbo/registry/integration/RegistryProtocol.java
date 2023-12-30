@@ -415,6 +415,11 @@ public class RegistryProtocol implements Protocol {
                 return doRefer(getMergeableCluster(), registry, type, url);
             }
         }
+        // 调用doRefer，完成Invoker的创建和注册中心的订阅
+        // 此处的cluster是成员变量，Cluster的自适应扩展Cluster@Adaptive
+        // 因为Cluster的默认扩展点是FailoverCluster，MockClusterWrapper是Cluster的包装类
+        // 在ExtensionLoader里获取cluster时，默认是FailoverCluster，但有包装类MockClusterWrapper
+        // 因此，这里返回的cluster返回的是MockClusterWrapper
         return doRefer(cluster, registry, type, url);
     }
 
@@ -423,6 +428,9 @@ public class RegistryProtocol implements Protocol {
     }
 
     private <T> Invoker<T> doRefer(Cluster cluster, Registry registry, Class<T> type, URL url) {
+        // RegistryDirectory，是注册中心的服务目录
+        //  1、里面保存了服务提供者相关的信息，并对外提供获取服务的接口。如服务的名字、IP、端口等。
+        //  2、实现了NotifyListener接口，订阅了注册中心的服务信息变更事件，当发生变更后刷新服务目录。
         RegistryDirectory<T> directory = new RegistryDirectory<T>(type, url);
         directory.setRegistry(registry);
         directory.setProtocol(protocol);
@@ -434,9 +442,15 @@ public class RegistryProtocol implements Protocol {
             registry.register(directory.getRegisteredConsumerUrl());
         }
         directory.buildRouterChain(subscribeUrl);
+        // 注册服务变更事件
         directory.subscribe(subscribeUrl.addParameter(CATEGORY_KEY,
                 PROVIDERS_CATEGORY + "," + CONFIGURATORS_CATEGORY + "," + ROUTERS_CATEGORY));
 
+        // 将服务目录，合并为一个虚拟的Invoker，并返回给Proxy使用
+        // 此处的cluster是成员变量，Cluster的自适应扩展Cluster@Adaptive
+        // 因为Cluster的默认扩展点是FailoverCluster，MockClusterWrapper是Cluster的包装类
+        // 在ExtensionLoader里获取cluster时，默认是FailoverCluster，但有包装类MockClusterWrapper
+        // 因此，这里返回的cluster返回的是MockClusterWrapper
         Invoker invoker = cluster.join(directory);
         ProviderConsumerRegTable.registerConsumer(invoker, url, subscribeUrl, directory);
         return invoker;
