@@ -126,14 +126,19 @@ final class NettyChannel extends AbstractChannel {
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
         // whether the channel is closed
-        super.send(message, sent);
+        super.send(message, sent); // 父类的send实现，只是校验连接有没有关闭，没其它逻辑
 
         boolean success = true;
         int timeout = 0;
         try {
+            // 往服务端发送消息
+            // 此处的channel，是Netty框架里的Channel，可以理解为一个可用于网络通讯的连接
             ChannelFuture future = channel.writeAndFlush(message);
+            // sent，表示是否等待消息发出成功。true表示等待，false表示不等待
+            // 默认情况下不等待
             if (sent) {
                 // wait timeout ms
+                // 等待消息发送成功
                 timeout = getUrl().getPositiveParameter(TIMEOUT_KEY, DEFAULT_TIMEOUT);
                 success = future.await(timeout);
             }

@@ -113,8 +113,12 @@ final class HeaderExchangeChannel implements ExchangeChannel {
         req.setVersion(Version.getProtocolVersion());
         req.setTwoWay(true);
         req.setData(request);
+        // 最终，返回的是DefaultFuture，DefaultFuture继承自CompletableFuture
+        // 此处的channel为NettyClient
         DefaultFuture future = DefaultFuture.newFuture(channel, req, timeout);
         try {
+            // 此处的channel为NettyClient
+            // 调用的是NettyClient的父类AbstractPeer.send()
             channel.send(req);
         } catch (RemotingException e) {
             future.cancel();

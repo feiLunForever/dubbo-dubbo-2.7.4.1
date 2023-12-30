@@ -402,7 +402,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             if (urls.size() == 1) {  // 只有一个url，可能是单个注册中心，或点对点的服务直连
                 // REF_PROTOCOL是Protocol的自适应扩展Protocol&Adaptive
                 // url.protocol=registry
-                // 因此，这里调用的是RegistryProtocol的refer，创建Invoker
+                // 因此，这里调用的是 RegistryProtocol 的refer，创建Invoker
                 invoker = REF_PROTOCOL.refer(interfaceClass, urls.get(0));
             } else {
                 // 多个url，可能是多注册中心、多服务提供者

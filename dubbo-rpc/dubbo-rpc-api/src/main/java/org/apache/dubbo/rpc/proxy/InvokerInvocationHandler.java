@@ -51,7 +51,12 @@ public class InvokerInvocationHandler implements InvocationHandler {
         if ("equals".equals(methodName) && parameterTypes.length == 1) {
             return invoker.equals(args[0]);
         }
-
+        // 通过invoker发起远程调用
+        // 1、创建RpcInvocation。RpcInvocation是Rpc调用信息的载体，里面包含了调用接口、参数、调用模式等内容。
+        // 2、调用invoker.invoke()，发起远程调用
+        // 3、调用Result.recreate()，获取远程返回的结果
+        // 这里默认的invoker是通过Cluster包装类MockClusterWrapper创建的MockClusterInvoker，
+        // MockClusterWrapper是通过ExtensionLoader创建Cluster扩展点时，处理的包装类。
         return invoker.invoke(new RpcInvocation(method, args)).recreate();
     }
 }

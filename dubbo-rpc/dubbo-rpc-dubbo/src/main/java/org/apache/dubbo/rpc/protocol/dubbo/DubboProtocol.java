@@ -117,12 +117,13 @@ public class DubboProtocol extends AbstractProtocol {
         @Override
         public CompletableFuture<Object> reply(ExchangeChannel channel, Object message) throws RemotingException {
 
-            if (!(message instanceof Invocation)) {
+            if (!(message instanceof Invocation)) { // 必须为Invocation
                 throw new RemotingException(channel, "Unsupported request: "
                         + (message == null ? null : (message.getClass().getName() + ": " + message))
                         + ", channel: consumer: " + channel.getRemoteAddress() + " --> provider: " + channel.getLocalAddress());
             }
 
+            // 查找本地调用的Invoker
             Invocation inv = (Invocation) message;
             Invoker<?> invoker = getInvoker(channel, inv);
             // need to consider backward-compatibility if it's a callback
@@ -149,6 +150,9 @@ public class DubboProtocol extends AbstractProtocol {
                 }
             }
             RpcContext.getContext().setRemoteAddress(channel.getRemoteAddress());
+            // 此处获取到的invoker为ProtocolFilterWrapper.CallbackRegistrationInvoker
+            // 其内部执行Dubbo中过滤器Filter，包括全局的和用户自定义的过滤器
+            // 执行完过滤器后，最终调用到AbstractProxyInvoker.doInvoke()
             Result result = invoker.invoke(inv);
             return result.completionFuture().thenApply(Function.identity());
         }

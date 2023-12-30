@@ -234,7 +234,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
 
     @Override
     public Result invoke(final Invocation invocation) throws RpcException {
-        checkWhetherDestroyed();
+        checkWhetherDestroyed(); // 检查是否已销毁
 
         // binding attachments into invocation.
         Map<String, String> contextAttachments = RpcContext.getContext().getAttachments();
@@ -242,10 +242,16 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
             ((RpcInvocation) invocation).addAttachments(contextAttachments);
         }
 
+        // 获取可用的invokers
+        // list的底层是调用的Directory.list
+        // 所有的invokers都保存在RouterChain.invokers里
+        // 所以Directory.list最终也是从RouterChain.invokers获取的
         List<Invoker<T>> invokers = list(invocation);
+        // 初始化负载均衡
         LoadBalance loadbalance = initLoadBalance(invokers, invocation);
+        //为异步调用添加InvocationId
         RpcUtils.attachInvocationIdIfAsync(getUrl(), invocation);
-        return doInvoke(invocation, invokers, loadbalance);
+        return doInvoke(invocation, invokers, loadbalance); // 调用子类的模板方法doInvoke()，当前对象为FailoverClusterInvoker
     }
 
     protected void checkWhetherDestroyed() {
@@ -277,7 +283,7 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
                                        LoadBalance loadbalance) throws RpcException;
 
     protected List<Invoker<T>> list(Invocation invocation) throws RpcException {
-        return directory.list(invocation);
+        return directory.list(invocation);  // 通过服务目录directory，获取可用的Invoker
     }
 
     /**
@@ -293,9 +299,12 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
      */
     protected LoadBalance initLoadBalance(List<Invoker<T>> invokers, Invocation invocation) {
         if (CollectionUtils.isNotEmpty(invokers)) {
+            // 如果invoker不为空，则通过第一个invoker的负载均衡参数，指定负载群衡器
+            // 如果没有负载均衡参数，取默认的随机负载均衡器
             return ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(invokers.get(0).getUrl()
                     .getMethodParameter(RpcUtils.getMethodName(invocation), LOADBALANCE_KEY, DEFAULT_LOADBALANCE));
         } else {
+            // 如果invoker为空，取默认的随机负载均衡器
             return ExtensionLoader.getExtensionLoader(LoadBalance.class).getExtension(DEFAULT_LOADBALANCE);
         }
     }

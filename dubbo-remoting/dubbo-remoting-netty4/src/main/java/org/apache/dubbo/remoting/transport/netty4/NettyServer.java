@@ -114,7 +114,7 @@ public class NettyServer extends AbstractServer implements Server {
                                 .addLast("decoder", adapter.getDecoder())
                                 .addLast("encoder", adapter.getEncoder())
                                 .addLast("server-idle-handler", new IdleStateHandler(0, 0, idleTimeout, MILLISECONDS))
-                                .addLast("handler", nettyServerHandler);
+                                .addLast("handler", nettyServerHandler); // 设定消息处理器handler;
                     }
                 });
         // 绑定端口并启动服务

@@ -573,6 +573,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     @Override
     public List<Invoker<T>> doList(Invocation invocation) {
+        // 没有可用的服务，抛出异常
+        // 这个是日常调试过程中比较常见的问题，比如依赖的服务方正在部署。
+        // forbidden属性，是在refreshInvokers方法里更新的。当没有可用服务，就会置为true
         if (forbidden) {
             // 1. No service provider 2. Service providers are disabled
             throw new RpcException(RpcException.FORBIDDEN_EXCEPTION, "No provider available from registry " +
@@ -580,7 +583,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     NetUtils.getLocalHost() + " use dubbo version " + Version.getVersion() +
                     ", please check status of providers(disabled, not registered or in blacklist).");
         }
-
+        // 存在多个组，返回合并后的invokers
+        // 多个组的概念是：配置了group&(group='*'或者group带',')
+        // 多个组的情况下，会将多组的invoker，合并为一个invoker集合
         if (multiGroup) {
             return this.invokers == null ? Collections.emptyList() : this.invokers;
         }
@@ -588,6 +593,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         List<Invoker<T>> invokers = null;
         try {
             // Get invokers from cache, only runtime routers will be executed.
+            // 从routerChain容器中获取invokers
+            // 内含路由的过滤逻辑
             invokers = routerChain.route(getConsumerUrl(), invocation);
         } catch (Throwable t) {
             logger.error("Failed to execute router: " + getUrl() + ", cause: " + t.getMessage(), t);

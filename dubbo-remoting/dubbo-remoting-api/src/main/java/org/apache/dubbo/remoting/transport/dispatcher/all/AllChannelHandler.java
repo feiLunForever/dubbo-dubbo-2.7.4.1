@@ -60,11 +60,13 @@ public class AllChannelHandler extends WrappedChannelHandler {
     public void received(Channel channel, Object message) throws RemotingException {
         ExecutorService executor = getExecutorService();
         try {
+            // 创建线程，在线程池内异步执行逻辑处理
             executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
         } catch (Throwable t) {
             //TODO A temporary solution to the problem that the exception information can not be sent to the opposite end after the thread pool is full. Need a refactoring
             //fix The thread pool is full, refuses to call, does not return, and causes the consumer to wait for time out
-        	if(message instanceof Request && t instanceof RejectedExecutionException){
+            //如果是Request请求，且抛出了RejectedExecutionException，则说明是线程池满了，并将线程池满的异常返回给客户端
+            if(message instanceof Request && t instanceof RejectedExecutionException){
         		Request request = (Request)message;
         		if(request.isTwoWay()){
         			String msg = "Server side(" + url.getIp() + "," + url.getPort() + ") threadpool is exhausted ,detail msg:" + t.getMessage();

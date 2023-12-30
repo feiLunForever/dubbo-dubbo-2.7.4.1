@@ -47,6 +47,7 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
             protected Object doInvoke(T proxy, String methodName,
                                       Class<?>[] parameterTypes,
                                       Object[] arguments) throws Throwable {
+                // 此处的wrapper是Dubbo生成的本地服务代理类
                 return wrapper.invokeMethod(proxy, methodName, parameterTypes, arguments);
             }
         };

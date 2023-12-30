@@ -58,27 +58,36 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
         List<Invoker<T>> copyInvokers = invokers;
         checkInvokers(copyInvokers, invocation);
         String methodName = RpcUtils.getMethodName(invocation);
+        // 获取重试次数
         int len = getUrl().getMethodParameter(methodName, RETRIES_KEY, DEFAULT_RETRIES) + 1;
         if (len <= 0) {
             len = 1;
         }
-        // retry loop.
-        RpcException le = null; // last exception.
-        List<Invoker<T>> invoked = new ArrayList<Invoker<T>>(copyInvokers.size()); // invoked invokers.
+        // 以下为重试逻辑，当调用失败后，重试len次。
+        RpcException le = null; // 最后的异常.
+        List<Invoker<T>> invoked = new ArrayList<Invoker<T>>(copyInvokers.size()); // 被调用过的invoker.
         Set<String> providers = new HashSet<String>(len);
         for (int i = 0; i < len; i++) {
             //Reselect before retry to avoid a change of candidate `invokers`.
             //NOTE: if `invokers` changed, then `invoked` also lose accuracy.
+            // 重试前，重新获取可用的invokers(因为invokers有可能变更)，并再次校验
+            // 如果invokers做了变更，则可能导致'invoked'不准确。
+            // 注意：第一次调用的时候，不会走下面的if(){}逻辑。
             if (i > 0) {
-                checkWhetherDestroyed();
-                copyInvokers = list(invocation);
+                checkWhetherDestroyed(); // 校验是否已销毁
+                copyInvokers = list(invocation); // 重新获取可用的invokers
                 // check again
-                checkInvokers(copyInvokers, invocation);
+                checkInvokers(copyInvokers, invocation); // 再次检查
             }
+            // 筛选出唯一的Invoker，用于后面的远程调用
+            // 内部包含负载均衡算法等逻辑
             Invoker<T> invoker = select(loadbalance, invocation, copyInvokers, invoked);
             invoked.add(invoker);
             RpcContext.getContext().setInvokers((List) invoked);
             try {
+                // 调用invoker.invoke()，发起远程调用
+                // 此处的invoker为InvokerDelegate
+                // 经过一系列的逻辑处理，最终调用AsyncToSyncInvoker.invoke()
                 Result result = invoker.invoke(invocation);
                 if (le != null && logger.isWarnEnabled()) {
                     logger.warn("Although retry the method " + methodName

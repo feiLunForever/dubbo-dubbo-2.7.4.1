@@ -89,9 +89,10 @@ public class NettyServerHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelRead(ChannelHandlerContext ctx, Object msg) throws Exception {
+        // 获取NettyChannel，与客户端的连接通道
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         try {
-            handler.received(channel, msg);
+            handler.received(channel, msg); // 调用NettyServer.received()
         } finally {
             NettyChannel.removeChannelIfDisconnected(ctx.channel());
         }
