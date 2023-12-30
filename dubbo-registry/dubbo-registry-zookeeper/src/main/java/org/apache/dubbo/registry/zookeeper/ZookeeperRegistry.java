@@ -125,6 +125,9 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doRegister(URL url) {
         try {
+            //在/dubbo/接口全限定名/provider/下创建当前服务的临时节点
+            //临时节点包含了当前服务信息，如应用名、接口名、方法名、版本号等
+            //dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=51508&release=&side=provider&timestamp=1703927608630
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);
@@ -180,10 +183,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
                 List<URL> urls = new ArrayList<>(); // 订阅服务信息变更事件
                 // 给[/dubbo/服务名]下的节点，添加监听。
                 // 以DemoService为例，会给以下节点添加监听：
-                // 1、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/providers；
-                // 2、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/configurators；
-                // 3、/dubbo/com.yuqiao.deeplearningdubbo.analysis.base.DemoService/routers。
-                // consumer://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=providers,configurators,routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=27252&qos.port=33333&side=consumer&sticky=false&timestamp=1703911240858
+                // 1、/dubbo/org.apache.dubbo.demo.DemoService/providers
+                // 2、/dubbo/org.apache.dubbo.demo.DemoService/configurators
+                // 3、/dubbo/org.apache.dubbo.demo.DemoService/routers
+                // consumer://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=providers,configurators,routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=51908&qos.port=33333&side=consumer&sticky=false&timestamp=1703927952788
                 for (String path : toCategoriesPath(url)) {
                     ConcurrentMap<NotifyListener, ChildListener> listeners = zkListeners.get(url);
                     if (listeners == null) {

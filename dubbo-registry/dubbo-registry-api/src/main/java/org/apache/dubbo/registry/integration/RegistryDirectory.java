@@ -174,7 +174,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
         // 这里的registry是ZookeeperRegistry，其父类是FailbackRegistry
         // 因此，里面的逻辑是：
         // 先调用FailbackRegistry.subscribe()；
-        // 然后调用ZookeeperRegistry.doSubScribe()。
+        // 然后调用 ZookeeperRegistry.doSubScribe()。
         // consumer://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=providers,configurators,routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=26742&qos.port=33333&side=consumer&sticky=false&timestamp=1703910783555
         registry.subscribe(url, this);
     }
@@ -214,6 +214,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     @Override
     public synchronized void notify(List<URL> urls) {
+        // 初始化有效的url
         Map<String, List<URL>> categoryUrls = urls.stream()
                 .filter(Objects::nonNull)
                 .filter(this::isValidCategory)
@@ -229,13 +230,16 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                     return "";
                 }));
 
+        // 处理configurators类型的URL
         List<URL> configuratorURLs = categoryUrls.getOrDefault(CONFIGURATORS_CATEGORY, Collections.emptyList());
         this.configurators = Configurator.toConfigurators(configuratorURLs).orElse(this.configurators);
 
+        // 处理routers类型的URL
         List<URL> routerURLs = categoryUrls.getOrDefault(ROUTERS_CATEGORY, Collections.emptyList());
         toRouters(routerURLs).ifPresent(this::addRouters);
 
-        // providers
+        // 处理providers类型的URL
+        // 这里面包含了刷新和保存Invoker的核心逻辑
         List<URL> providerURLs = categoryUrls.getOrDefault(PROVIDERS_CATEGORY, Collections.emptyList());
         refreshOverrideAndInvoker(providerURLs);
     }

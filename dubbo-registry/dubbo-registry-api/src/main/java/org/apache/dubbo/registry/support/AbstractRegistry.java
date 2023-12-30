@@ -399,9 +399,17 @@ public abstract class AbstractRegistry implements Registry {
             logger.info("Notify urls for subscribe url " + url + ", urls: " + urls);
         }
         // keep every provider's category.
+        // 初始化服务提供者的种类
+        // 初始化完成的数据:
+        // key1=routers,value2=empty://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=routers&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=52213&qos.port=33333&side=consumer&sticky=false&timestamp=1703928214618
+        // key2=configurators,value2=empty://192.168.1.12/org.apache.dubbo.demo.DemoService?application=demo-consumer&category=configurators&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=52213&qos.port=33333&side=consumer&sticky=false&timestamp=1703928214618
+        // key3=providers,value3=dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=51856&release=&side=provider&timestamp=1703927913733
         Map<String, List<URL>> result = new HashMap<>();
         for (URL u : urls) {
             if (UrlUtils.isMatch(url, u)) {
+                // 匹配当前消费者和服务提供者
+                // 即判断当前通知的服务提供者，是不是当前服务消费者对应的服务
+                // 如A接口的服务消费者只关心A接口的服务提供者
                 String category = u.getParameter(CATEGORY_KEY, DEFAULT_CATEGORY);
                 List<URL> categoryList = result.computeIfAbsent(category, k -> new ArrayList<>());
                 categoryList.add(u);
@@ -411,11 +419,14 @@ public abstract class AbstractRegistry implements Registry {
             return;
         }
         Map<String, List<URL>> categoryNotified = notified.computeIfAbsent(url, u -> new ConcurrentHashMap<>());
+        // 遍历服务提供者的所有种类
+        // 按种类依次通知
         for (Map.Entry<String, List<URL>> entry : result.entrySet()) {
             String category = entry.getKey();
             List<URL> categoryList = entry.getValue();
             categoryNotified.put(category, categoryList);
-            listener.notify(categoryList);
+
+            listener.notify(categoryList); // 调用监听器的notify()，执行通知
             // We will update our cache file after each notification.
             // When our Registry has a subscribe failure due to network jitter, we can return at least the existing cache URL.
             saveProperties(url);
