@@ -182,7 +182,17 @@ public class RegistryProtocol implements Protocol {
     }
 
     public void register(URL registryUrl, URL registeredProviderUrl) {
+        // 获取注册中心对象Registry
+        // 这里的registryFactory，是自适应扩展RegistryFactory@Adaptive
+        // registryUrl.protocol=zookeeper，所以获取到的是ZookeeperRegistryFactory
+        // 最后通过ZookeeperRegistryFactory.createRegistry创建并获取注册中心对象，ZookeeperRegistry
+        // zookeeper://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.1.12%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26bean.name%3Dorg.apache.dubbo.demo.DemoService%26bind.ip%3D192.168.1.12%26bind.port%3D20880%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D20329%26qos.port%3D22222%26release%3D%26side%3Dprovider%26timestamp%3D1703845803242&pid=20329&qos.port=22222&timestamp=1703845803230
         Registry registry = registryFactory.getRegistry(registryUrl);
+        // 调用register方法，注册服务
+        // Registry运用的是模板方法设计模式
+        // 底层的抽象实现FailbackRegistry，调用各个实现类的doRegister方法。如ZookeeperRegister.doRegister.
+        // 最终通过ZookeeperRegister.doRegister，注册服务信息，即将服务信息写到注册中心里。这样其他服务就可以从注册中心读到服务信息了。
+        // dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=20329&release=&side=provider&timestamp=1703845803242
         registry.register(registeredProviderUrl);
     }
 
@@ -193,8 +203,14 @@ public class RegistryProtocol implements Protocol {
 
     @Override
     public <T> Exporter<T> export(final Invoker<T> originInvoker) throws RpcException {
+        // 注册中心URL，
+        // 当前URL中的protocol=registry
+        // 将protocol替换成注册中心的协议，如zookeeper
+        // zookeeper://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&export=dubbo%3A%2F%2F192.168.1.12%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26bean.name%3Dorg.apache.dubbo.demo.DemoService%26bind.ip%3D192.168.1.12%26bind.port%3D20880%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D18299%26qos.port%3D22222%26release%3D%26side%3Dprovider%26timestamp%3D1703844042483&pid=18299&qos.port=22222&timestamp=1703844042472
         URL registryUrl = getRegistryUrl(originInvoker);
-        // url to export locally
+        // 服务提供者URL
+        // 与registryUrl对比，这里的protocol变成了dubbo
+        // dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&bind.ip=192.168.1.12&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=18299&qos.port=22222&release=&side=provider&timestamp=1703844042483
         URL providerUrl = getProviderUrl(originInvoker);
 
         // Subscribe the override data
@@ -206,11 +222,16 @@ public class RegistryProtocol implements Protocol {
         overrideListeners.put(overrideSubscribeUrl, overrideSubscribeListener);
 
         providerUrl = overrideUrlWithConfig(providerUrl, overrideSubscribeListener);
-        //export invoker
+
+        // 导出invoker，
+        // 这里面再次通过Protocol$Adaptive调用Protocol的扩展点
+        // 因为providerUrl里的protocol已经变为了dubbo，所以这里面实际上调用了DubboProtocol.export。
+        // 在DubboProtocol.export()里，实现了服务的启动
         final ExporterChangeableWrapper<T> exporter = doLocalExport(originInvoker, providerUrl);
 
-        // url to registry
+        // zookeeper://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&interface=org.apache.dubbo.registry.RegistryService&pid=20329&qos.port=22222&timestamp=1703845803230
         final Registry registry = getRegistry(originInvoker);
+        // dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=20329&release=&side=provider&timestamp=1703845803242
         final URL registeredProviderUrl = getRegisteredProviderUrl(providerUrl, registryUrl);
         ProviderInvokerWrapper<T> providerInvokerWrapper = ProviderConsumerRegTable.registerProvider(originInvoker,
                 registryUrl, registeredProviderUrl);
@@ -242,6 +263,10 @@ public class RegistryProtocol implements Protocol {
         String key = getCacheKey(originInvoker);
 
         return (ExporterChangeableWrapper<T>) bounds.computeIfAbsent(key, s -> {
+            // 这里调用protocol.export进行启动服务
+            // 此处的protocol，是在RegistryProtocol实例化的时候通过ExtensionLoader依赖注入的
+            // 依赖注入的是Protocol的自适应扩展点Protocol$Adaptive
+            // 此处的originInvoker.url.protocol=dubbo，所以最终调用的是 DubboProtocol.export
             Invoker<?> invokerDelegate = new InvokerDelegate<>(originInvoker, providerUrl);
             return new ExporterChangeableWrapper<>((Exporter<T>) protocol.export(invokerDelegate), originInvoker);
         });

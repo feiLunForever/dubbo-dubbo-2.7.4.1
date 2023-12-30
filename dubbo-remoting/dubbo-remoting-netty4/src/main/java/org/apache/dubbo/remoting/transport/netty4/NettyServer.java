@@ -86,15 +86,19 @@ public class NettyServer extends AbstractServer implements Server {
      */
     @Override
     protected void doOpen() throws Throwable {
+        // Netty服务启动辅助类
         bootstrap = new ServerBootstrap();
-
+        // Netty boss线程组
         bossGroup = new NioEventLoopGroup(1, new DefaultThreadFactory("NettyServerBoss", true));
+        // Netty worker线程组
         workerGroup = new NioEventLoopGroup(getUrl().getPositiveParameter(IO_THREADS_KEY, Constants.DEFAULT_IO_THREADS),
                 new DefaultThreadFactory("NettyServerWorker", true));
 
+        // Dubbo实现的，处理Netty消息的Handler
         final NettyServerHandler nettyServerHandler = new NettyServerHandler(getUrl(), this);
         channels = nettyServerHandler.getChannels();
 
+        // Netty服务的一系列配置
         bootstrap.group(bossGroup, workerGroup)
                 .channel(NioServerSocketChannel.class)
                 .childOption(ChannelOption.TCP_NODELAY, Boolean.TRUE)
@@ -113,7 +117,7 @@ public class NettyServer extends AbstractServer implements Server {
                                 .addLast("handler", nettyServerHandler);
                     }
                 });
-        // bind
+        // 绑定端口并启动服务
         ChannelFuture channelFuture = bootstrap.bind(getBindAddress());
         channelFuture.syncUninterruptibly();
         channel = channelFuture.channel();

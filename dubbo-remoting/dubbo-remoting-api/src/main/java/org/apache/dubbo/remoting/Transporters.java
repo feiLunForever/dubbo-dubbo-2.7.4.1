@@ -53,6 +53,9 @@ public class Transporters {
         } else {
             handler = new ChannelHandlerDispatcher(handlers);
         }
+        // getTransporter()，通过ExtensionLoader获取Transporter的自适应扩展点
+        // 默认为NettyTransporter
+        // 另外还有MinaTransporter、GrizzlyTransporter
         return getTransporter().bind(url, handler);
     }
 

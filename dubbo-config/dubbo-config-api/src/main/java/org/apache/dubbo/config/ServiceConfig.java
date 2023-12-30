@@ -367,13 +367,13 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     public synchronized void export() {
-        checkAndUpdateSubConfigs();
+        checkAndUpdateSubConfigs(); // 检查必要的配置
 
         if (!shouldExport()) {
             return;
         }
 
-        if (shouldDelay()) {
+        if (shouldDelay()) { // 延迟注册
             DELAY_EXPORT_EXECUTOR.schedule(this::doExport, getDelay(), TimeUnit.MILLISECONDS);
         } else {
             doExport();
@@ -413,7 +413,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
         if (StringUtils.isEmpty(path)) {
             path = interfaceName;
         }
-        doExportUrls();
+        doExportUrls(); // 执行启动和暴露服务
     }
 
     private void checkRef() {
@@ -450,12 +450,19 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
+        // 加载注册中心，将服务注册到所有的注册中心里。
+        // registryURLs示例：registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&pid=14029&qos.port=22222&registry=zookeeper&timestamp=1703839338878
         List<URL> registryURLs = loadRegistries(true);
+        //此处的protocols为要注册的协议
+        //protocols示例：<dubbo:protocol name="dubbo" valid="true" prefix="dubbo.protocols." id="dubbo" />
         for (ProtocolConfig protocolConfig : protocols) {
+            // 服务路径key，下面会保存到全局服务容器里(ApplicationModel.PROVIDED_SERVICES)
+            // pathKey示例：org.apache.dubbo.demo.DemoService
             String pathKey = URL.buildKey(getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), group, version);
             ProviderModel providerModel = new ProviderModel(pathKey, ref, interfaceClass);
             ApplicationModel.initProviderModel(pathKey, providerModel);
-            doExportUrlsFor1Protocol(protocolConfig, registryURLs);
+
+            doExportUrlsFor1Protocol(protocolConfig, registryURLs); // 执行服务的启动和暴露
         }
     }
 
@@ -558,8 +565,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
             }
         }
         // export service
-        String host = this.findConfigedHosts(protocolConfig, registryURLs, map);
-        Integer port = this.findConfigedPorts(protocolConfig, name, map);
+        String host = this.findConfigedHosts(protocolConfig, registryURLs, map); // 服务机器IP
+        Integer port = this.findConfigedPorts(protocolConfig, name, map); // 服务端口
+
+        //将服务信息，转化为URL对象
+        //将来暴露服务，都是从URL中解析的。
+        //url数据示例：dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&bind.ip=192.168.1.12&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=14980&qos.port=22222&release=&side=provider&timestamp=1703840125152
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
@@ -568,16 +579,16 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
                     .getExtension(url.getProtocol()).getConfigurator(url).configure(url);
         }
 
-        String scope = url.getParameter(SCOPE_KEY);
+        String scope = url.getParameter(SCOPE_KEY); // scope默认为null，当scope配置为none时，才不暴露
         // don't export when none is configured
         if (!SCOPE_NONE.equalsIgnoreCase(scope)) {
 
             // export to local if the config is not remote (export to remote only when config is remote)
-            if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) {
+            if (!SCOPE_REMOTE.equalsIgnoreCase(scope)) { // 如果没有明确配置为remote，则向本地暴露服务
                 exportLocal(url);
             }
             // export to remote if the config is not local (export to local only when config is local)
-            if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) {
+            if (!SCOPE_LOCAL.equalsIgnoreCase(scope)) { // 如果配置不是local，则向远程暴露服务
                 if (CollectionUtils.isNotEmpty(registryURLs)) {
                     for (URL registryURL : registryURLs) {
                         //if protocol is only injvm ,not register
@@ -605,6 +616,12 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
                         Invoker<?> invoker = PROXY_FACTORY.getInvoker(ref, (Class) interfaceClass, registryURL.addParameterAndEncoded(EXPORT_KEY, url.toFullString()));
                         DelegateProviderMetaDataInvoker wrapperInvoker = new DelegateProviderMetaDataInvoker(invoker, this);
+
+                        // 注册服务
+                        // 注意，这里的protocol是自适应类(Protocol$Adaptive)，url里面的协议参数是registry
+                        // 所以，实际上是调用了RegistryProtocol.export
+                        // 最终，1、在RegistryProtocol.export里调用了DubboProtocol.export启动服务
+                        //     2、在RegistryProtocol.export里调用了Registry.register暴露服务
 
                         Exporter<?> exporter = protocol.export(wrapperInvoker);
                         exporters.add(exporter);

@@ -41,6 +41,7 @@ public class HeaderExchanger implements Exchanger {
 
     @Override
     public ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
+        // 启动服务的核心代码是Transporters.bind
         return new HeaderExchangeServer(Transporters.bind(url, new DecodeHandler(new HeaderExchangeHandler(handler))));
     }
 
