@@ -35,12 +35,16 @@ public class JavassistProxyFactory extends AbstractProxyFactory {
         // 生成Proxy类
         // 实例化InvokerInvocationHandler，并注入invoker
         // 实例化Proxy类，并注入上一步的InvokerInvocationHandler
+        // Proxy.getProxy()生成的是Proxy的子类对象，用于生成服务代理对象；
+        // 而 Proxy.newInstance()生成的才是代理服务调用的对象，即当调用接口时，调用的是Proxy.newInstance()生成的代理对象。
         return (T) Proxy.getProxy(interfaces).newInstance(new InvokerInvocationHandler(invoker));
     }
 
     @Override
     public <T> Invoker<T> getInvoker(T proxy, Class<T> type, URL url) {
         // TODO Wrapper cannot handle this scenario correctly: the classname contains '$'
+        // 此处的proxy为接口实现类，如DemoServiceImpl
+        // 生成接口实现类的包装类，当调用invoker.doInvoke时，通过包装类的invokeMethod，调用实现类方法
         final Wrapper wrapper = Wrapper.getWrapper(proxy.getClass().getName().indexOf('$') < 0 ? proxy.getClass() : type);
         return new AbstractProxyInvoker<T>(proxy, type, url) {
             @Override

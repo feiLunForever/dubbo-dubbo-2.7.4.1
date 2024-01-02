@@ -74,14 +74,17 @@ public abstract class Proxy {
      * @return Proxy instance.
      */
     public static Proxy getProxy(ClassLoader cl, Class<?>... ics) {
-        if (ics.length > MAX_PROXY_COUNT) {
+        if (ics.length > MAX_PROXY_COUNT) { // 代理接口的数量，最大支持65535个
             throw new IllegalArgumentException("interface limit exceeded");
         }
 
+        // 拼接代理类key，用于保存到本地缓存中
+        // 以接口名字为key，代理类对象为value，保存到本地缓存中，避免多次创建代理类
+        // org.apache.dubbo.demo.DemoService;com.alibaba.dubbo.rpc.service.EchoService;
         StringBuilder sb = new StringBuilder();
         for (int i = 0; i < ics.length; i++) {
             String itf = ics[i].getName();
-            if (!ics[i].isInterface()) {
+            if (!ics[i].isInterface()) { // 代理的接口，必须为接口
                 throw new RuntimeException(itf + " is not a interface.");
             }
 
@@ -91,7 +94,7 @@ public abstract class Proxy {
             } catch (ClassNotFoundException e) {
             }
 
-            if (tmp != ics[i]) {
+            if (tmp != ics[i]) { // 判断代理的接口是否加载成功
                 throw new IllegalArgumentException(ics[i] + " is not visible from class loader");
             }
 
@@ -99,7 +102,7 @@ public abstract class Proxy {
         }
 
         // use interface class name list as key.
-        String key = sb.toString();
+        String key = sb.toString();  // 使用拼接后的接口吗，作为缓存的KEY
 
         // get cache by class loader.
         final Map<String, Object> cache;
@@ -111,19 +114,20 @@ public abstract class Proxy {
         synchronized (cache) {
             do {
                 Object value = cache.get(key);
-                if (value instanceof Reference<?>) {
+                if (value instanceof Reference<?>) {  // 缓存中已经存在了key对应的Proxy，直接返回
                     proxy = (Proxy) ((Reference<?>) value).get();
                     if (proxy != null) {
                         return proxy;
                     }
                 }
-
+                // 如果缓存中的内容是中间态标记，则先wait
+                // 主要是为了并发控制，保证只有一个线程可以进行后面的操作
                 if (value == PENDING_GENERATION_MARKER) {
                     try {
-                        cache.wait();
+                        cache.wait(); // 其他线程全部在这里等待
                     } catch (InterruptedException e) {
                     }
-                } else {
+                } else { // 如果缓存中为空，则先插入一个中间态标记对象
                     cache.put(key, PENDING_GENERATION_MARKER);
                     break;
                 }
@@ -131,15 +135,21 @@ public abstract class Proxy {
             while (true);
         }
 
+        // 代理类自增ID编号
         long id = PROXY_CLASS_COUNTER.getAndIncrement();
         String pkg = null;
+        // 这里要注意这两个变量，ccp和ccm
+        // ccp是真正代理服务调用的代理类
+        // ccm是动态生成的Proxy子类，它实现了newInstance()方法，并在此方法中实例化ccp
         ClassGenerator ccp = null, ccm = null;
         try {
-            ccp = ClassGenerator.newInstance(cl);
+            ccp = ClassGenerator.newInstance(cl); // 实例化ccp
 
             Set<String> worked = new HashSet<>();
             List<Method> methods = new ArrayList<>();
 
+            // 遍历要代理的接口
+            // 使生成的代理类ccp，实现所有指定的接口和方法。
             for (int i = 0; i < ics.length; i++) {
                 if (!Modifier.isPublic(ics[i].getModifiers())) {
                     String npkg = ics[i].getPackage().getName();
@@ -151,7 +161,7 @@ public abstract class Proxy {
                         }
                     }
                 }
-                ccp.addInterface(ics[i]);
+                ccp.addInterface(ics[i]); // 添加要实现的接口
 
                 for (Method method : ics[i].getMethods()) {
                     String desc = ReflectUtils.getDesc(method);
