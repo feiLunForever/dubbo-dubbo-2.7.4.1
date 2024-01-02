@@ -246,8 +246,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
 
     private void refreshOverrideAndInvoker(List<URL> urls) {
         // mock zookeeper://xxx?mock=return null
-        overrideDirectoryUrl();
-        refreshInvoker(urls);
+        overrideDirectoryUrl();  // 重写一些配置的URL，默认情况下可忽略
+        refreshInvoker(urls); // 刷新Invoker的核心方法
     }
 
     /**
@@ -277,6 +277,8 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             routerChain.setInvokers(this.invokers);
             destroyAllInvokers(); // Close all invokers
         } else {
+            // 将forbidden设置为false，允许访问
+            // 在拉取Invoker集合时，表示有可用的Invoker
             this.forbidden = false; // Allow to access
             // 将invokerUrls，转化为Invoker Map，内含生成Invoker的逻辑
             Map<String, Invoker<T>> oldUrlInvokerMap = this.urlInvokerMap; // local reference
@@ -292,6 +294,9 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             if (invokerUrls.isEmpty()) {
                 return;
             }
+
+            // 将invokerUrls，转化为Invoker Map，内含生成Invoker的逻辑
+            // 这里的invokerUrls，是每个服务提供者的服务信息，包括IP、端口、接口名、方法等
             Map<String, Invoker<T>> newUrlInvokerMap = toInvokers(invokerUrls);// Translate url list to Invoker map
 
             /**
@@ -318,6 +323,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
             this.urlInvokerMap = newUrlInvokerMap;
 
             try {
+                // 销毁没用的 Invoker
                 destroyUnusedInvokers(oldUrlInvokerMap, newUrlInvokerMap); // Close the unused Invoker
             } catch (Exception e) {
                 logger.warn("destroyUnusedInvokers error. ", e);
@@ -387,6 +393,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      * @return invokers
      */
     private Map<String, Invoker<T>> toInvokers(List<URL> urls) {
+        // 最终返回的新的InvokerMap
         Map<String, Invoker<T>> newUrlInvokerMap = new HashMap<>();
         if (urls == null || urls.isEmpty()) {
             return newUrlInvokerMap;
@@ -418,34 +425,51 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                         ExtensionLoader.getExtensionLoader(Protocol.class).getSupportedExtensions()));
                 continue;
             }
+
+            //合并url，就是填充一些其他参数信息，如side、timeout等
+            //合并后的url，side变成了consumer、remote.application执行provider的application等
+            //数据示例：
+            //合并前的providerUrl：dubbo://10.67.72.242:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=78707&release=&side=provider&timestamp=1704166638192
+            //合并后的url：dubbo://10.67.72.242:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-consumer&bean.name=org.apache.dubbo.demo.DemoService&check=false&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=78733&qos.port=33333&register.ip=10.67.72.242&release=&remote.application=demo-provider&side=consumer&sticky=false&timestamp=1704166638192
             URL url = mergeUrl(providerUrl);
 
+            // 把合并后的url作为key
             String key = url.toFullString(); // The parameter urls are sorted
             if (keys.contains(key)) { // Repeated url
                 continue;
             }
             keys.add(key);
             // Cache key is url that does not merge with consumer side parameters, regardless of how the consumer combines parameters, if the server url changes, then refer again
+            // 先根据key从缓存中获取
+            // 如果已经存在了Invoker，直接返回
+            // 如果没有Invoker，进入创建Invoker的逻辑
             Map<String, Invoker<T>> localUrlInvokerMap = this.urlInvokerMap; // local reference
             Invoker<T> invoker = localUrlInvokerMap == null ? null : localUrlInvokerMap.get(key);
             if (invoker == null) { // Not in the cache, refer again
                 try {
-                    boolean enabled = true;
+                    boolean enabled = true; // 判断是否启用Invoker
                     if (url.hasParameter(DISABLED_KEY)) {
                         enabled = !url.getParameter(DISABLED_KEY, false);
                     } else {
                         enabled = url.getParameter(ENABLED_KEY, true);
                     }
+                    // 如果启用，则创建Invoker
+                    // 注意返回的是InvokerDelegate，它是Invoker的包装类，它的主要作用是保存了服务提供者的原始providerUrl
                     if (enabled) {
+                        // 这里的protocol是自适应类
+                        // 最终获取到的是DubboProtocol
+                        // 走的是DubboProtocol.refer()创建用于远程调用DubboInvoker的逻辑
                         invoker = new InvokerDelegate<>(protocol.refer(serviceType, url), url, providerUrl);
                     }
                 } catch (Throwable t) {
                     logger.error("Failed to refer invoker for interface:" + serviceType + ",url:(" + url + ")" + t.getMessage(), t);
                 }
+                // 将创建好的Invoker，保存至newUrlInvokerMap
                 if (invoker != null) { // Put new invoker in cache
                     newUrlInvokerMap.put(key, invoker);
                 }
             } else {
+                // 如果缓存中(urlInvokerMap)已经存在，直接保存至newUrlInvokerMap
                 newUrlInvokerMap.put(key, invoker);
             }
         }
@@ -538,11 +562,13 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
      * @param newUrlInvokerMap
      */
     private void destroyUnusedInvokers(Map<String, Invoker<T>> oldUrlInvokerMap, Map<String, Invoker<T>> newUrlInvokerMap) {
-        if (newUrlInvokerMap == null || newUrlInvokerMap.size() == 0) {
+        if (newUrlInvokerMap == null || newUrlInvokerMap.size() == 0) { // 如果生成的最新InvokerMap是空的，则销毁所有Invoker
             destroyAllInvokers();
             return;
         }
         // check deleted invoker
+        // 检查需要销毁的Invoker
+        // 核心逻辑是，老的InvokerMap中的Invoker，已经不存在于新的InvokerMap中了，即表示需要销毁
         List<String> deleted = null;
         if (oldUrlInvokerMap != null) {
             Collection<Invoker<T>> newInvokers = newUrlInvokerMap.values();
@@ -555,7 +581,7 @@ public class RegistryDirectory<T> extends AbstractDirectory<T> implements Notify
                 }
             }
         }
-
+        // 遍历需要销毁的InvokerMap，调用invoker.destroy()方法，进行销毁操作
         if (deleted != null) {
             for (String url : deleted) {
                 if (url != null) {
