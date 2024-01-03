@@ -62,10 +62,12 @@ public abstract class ListenableRouter extends AbstractRouter implements Configu
                     ", raw rule is:\n " + event.getValue());
         }
 
-        if (event.getChangeType().equals(ConfigChangeType.DELETED)) {
+        if (event.getChangeType().equals(ConfigChangeType.DELETED)) { // 如果是删除路由规则，则将路由规则和conditionRouters都置为空
             routerRule = null;
             conditionRouters = Collections.emptyList();
         } else {
+            // 如果是变更路由规则
+            // 解析路由规则ConditionRouterRule，并生成ConditionRouter
             try {
                 routerRule = ConditionRuleParser.parse(event.getValue());
                 generateConditions(routerRule);
@@ -83,7 +85,7 @@ public abstract class ListenableRouter extends AbstractRouter implements Configu
         }
 
         // We will check enabled status inside each router.
-        for (Router router : conditionRouters) {
+        for (Router router : conditionRouters) { // 遍历所有条件路由，返回匹配所有条件路由规则的Invoker集合
             invokers = router.route(invokers, url, invocation);
         }
 
@@ -105,6 +107,8 @@ public abstract class ListenableRouter extends AbstractRouter implements Configu
     }
 
     private void generateConditions(ConditionRouterRule rule) {
+        // 如果路由规则有效
+        // 则将每条condition都生成一个对应的ConditionRouter
         if (rule != null && rule.isValid()) {
             this.conditionRouters = rule.getConditions()
                     .stream()
@@ -117,8 +121,12 @@ public abstract class ListenableRouter extends AbstractRouter implements Configu
         if (StringUtils.isEmpty(ruleKey)) {
             return;
         }
+        // AppRouter.routerKey='${application}.condition-router'
+        // ServiceRouter.routerKey='${serviceId}.condition-router'
         String routerKey = ruleKey + RULE_SUFFIX;
+        // 添加监听，当路由配置发生变更后，执行this.process()
         configuration.addListener(routerKey, this);
+        // 第一次初始化，获取路由配置，主动调用一次this.process()，解析路由规则
         String rule = configuration.getRule(routerKey, DynamicConfiguration.DEFAULT_GROUP);
         if (StringUtils.isNotEmpty(rule)) {
             this.process(new ConfigChangeEvent(routerKey, rule));

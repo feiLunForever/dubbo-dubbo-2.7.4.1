@@ -74,7 +74,7 @@ public class ConditionRouter extends AbstractRouter {
         this.priority = url.getParameter(PRIORITY_KEY, 0);
         this.force = url.getParameter(FORCE_KEY, false);
         this.enabled = url.getParameter(ENABLED_KEY, true);
-        init(url.getParameterAndDecoded(RULE_KEY));
+        init(url.getParameterAndDecoded(RULE_KEY)); // 初始化条件路由
     }
 
     public void init(String rule) {
@@ -84,11 +84,20 @@ public class ConditionRouter extends AbstractRouter {
             }
             rule = rule.replace("consumer.", "").replace("provider.", "");
             int i = rule.indexOf("=>");
+            // 解析whenRule
             String whenRule = i < 0 ? null : rule.substring(0, i).trim();
+            // 解析thenRule
             String thenRule = i < 0 ? rule.trim() : rule.substring(i + 2).trim();
+            // 将when表达式解析为Map<String, MatchPair>
+            // 数据示例：key=host,value=MatchPair
+            // MatchPair.matches={'192.168.1.3'}
             Map<String, MatchPair> when = StringUtils.isBlank(whenRule) || "true".equals(whenRule) ? new HashMap<String, MatchPair>() : parseRule(whenRule);
+            // 将then表达式解析为Map<String, MatchPair>
+            // 数据示例：key=host,value=MatchPair;MatchPair.matches={'192.168.1.3'}
+            // key=host,value=MatchPair;MatchPair.matches={'20881'}
             Map<String, MatchPair> then = StringUtils.isBlank(thenRule) || "false".equals(thenRule) ? null : parseRule(thenRule);
             // NOTE: It should be determined on the business level whether the `When condition` can be empty or not.
+            // 将解析后的when和then赋值给成员变量whenCondition和thenCondition
             this.whenCondition = when;
             this.thenCondition = then;
         } catch (ParseException e) {
@@ -169,37 +178,40 @@ public class ConditionRouter extends AbstractRouter {
     @Override
     public <T> List<Invoker<T>> route(List<Invoker<T>> invokers, URL url, Invocation invocation)
             throws RpcException {
-        if (!enabled) {
+        if (!enabled) { // 如果当前条件路由未启用，直接返回原Invoker集合
             return invokers;
         }
 
-        if (CollectionUtils.isEmpty(invokers)) {
+        if (CollectionUtils.isEmpty(invokers)) { // 如果Invoker集合为空，直接返回原Invoker集合
             return invokers;
         }
         try {
+            // 先匹配when
+            // 当前服务消费者，如果不满足when条件，则表示不适用于当前条件路由，直接返回原Invoker集合
             if (!matchWhen(url, invocation)) {
                 return invokers;
             }
             List<Invoker<T>> result = new ArrayList<Invoker<T>>();
+            // 如果满足when，但then为空，则表示当前服务消费者在黑名单里，禁止调用任何服务提供者
             if (thenCondition == null) {
                 logger.warn("The current consumer in the service blacklist. consumer: " + NetUtils.getLocalHost() + ", service: " + url.getServiceKey());
                 return result;
             }
-            for (Invoker<T> invoker : invokers) {
-                if (matchThen(invoker.getUrl(), url)) {
+            for (Invoker<T> invoker : invokers) { // 遍历所有服务提供者Invoker，与then条件匹配
+                if (matchThen(invoker.getUrl(), url)) { // 只有与then条件匹配的Invoker，才会添加到result中返回
                     result.add(invoker);
                 }
             }
-            if (!result.isEmpty()) {
+            if (!result.isEmpty()) { // 如果匹配完的返回结果不为空直接返回
                 return result;
-            } else if (force) {
+            } else if (force) { // 如果匹配完的返回结果为空，且force=true强制执行，则返回空结果
                 logger.warn("The route result is empty and force execute. consumer: " + NetUtils.getLocalHost() + ", service: " + url.getServiceKey() + ", router: " + url.getParameterAndDecoded(RULE_KEY));
                 return result;
             }
         } catch (Throwable t) {
             logger.error("Failed to execute condition router rule: " + getUrl() + ", invokers: " + invokers + ", cause: " + t.getMessage(), t);
         }
-        return invokers;
+        return invokers; // 默认返回原Invoker集合
     }
 
     @Override
