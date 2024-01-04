@@ -87,9 +87,10 @@ public class NettyClient extends AbstractClient {
      */
     @Override
     protected void doOpen() throws Throwable {
+        // Netty客户端处理器
         final NettyClientHandler nettyClientHandler = new NettyClientHandler(getUrl(), this);
-        bootstrap = new Bootstrap();
-        bootstrap.group(nioEventLoopGroup)
+        bootstrap = new Bootstrap(); // Netty客户端启动辅助类
+        bootstrap.group(nioEventLoopGroup) // Netty客户端配置
                 .option(ChannelOption.SO_KEEPALIVE, true)
                 .option(ChannelOption.TCP_NODELAY, true)
                 .option(ChannelOption.ALLOCATOR, PooledByteBufAllocator.DEFAULT)
@@ -97,6 +98,7 @@ public class NettyClient extends AbstractClient {
                 .channel(NioSocketChannel.class);
 
         bootstrap.option(ChannelOption.CONNECT_TIMEOUT_MILLIS, Math.max(3000, getConnectTimeout()));
+        // 配置Netty的客户端处理器
         bootstrap.handler(new ChannelInitializer() {
 
             @Override
@@ -121,45 +123,46 @@ public class NettyClient extends AbstractClient {
     @Override
     protected void doConnect() throws Throwable {
         long start = System.currentTimeMillis();
-        ChannelFuture future = bootstrap.connect(getConnectAddress());
+        ChannelFuture future = bootstrap.connect(getConnectAddress()); // 连接服务提供者
         try {
             boolean ret = future.awaitUninterruptibly(getConnectTimeout(), MILLISECONDS);
 
-            if (ret && future.isSuccess()) {
-                Channel newChannel = future.channel();
+            if (ret && future.isSuccess()) { // 连接成功
+                Channel newChannel = future.channel(); // 获取最新的当前客户端的channel
                 try {
                     // Close old channel
                     // copy reference
+                    // 看是否存在老channel，如果存在，将老channel关闭
                     Channel oldChannel = NettyClient.this.channel;
                     if (oldChannel != null) {
                         try {
                             if (logger.isInfoEnabled()) {
                                 logger.info("Close old netty channel " + oldChannel + " on create new netty channel " + newChannel);
                             }
-                            oldChannel.close();
+                            oldChannel.close();  // 关闭老channel
                         } finally {
                             NettyChannel.removeChannelIfDisconnected(oldChannel);
                         }
                     }
                 } finally {
-                    if (NettyClient.this.isClosed()) {
+                    if (NettyClient.this.isClosed()) { // 如果当前客户端已关闭，关闭当前客户端channel
                         try {
                             if (logger.isInfoEnabled()) {
                                 logger.info("Close new netty channel " + newChannel + ", because the client closed.");
                             }
-                            newChannel.close();
+                            newChannel.close(); // 关闭客户端channel
                         } finally {
-                            NettyClient.this.channel = null;
+                            NettyClient.this.channel = null; // 清除当前客户端channel
                             NettyChannel.removeChannelIfDisconnected(newChannel);
                         }
                     } else {
                         NettyClient.this.channel = newChannel;
                     }
                 }
-            } else if (future.cause() != null) {
+            } else if (future.cause() != null) { // 如果有明确的异常，则抛出该异常
                 throw new RemotingException(this, "client(url: " + getUrl() + ") failed to connect to server "
                         + getRemoteAddress() + ", error message is:" + future.cause().getMessage(), future.cause());
-            } else {
+            } else { // 否则抛出连接超时异常
                 throw new RemotingException(this, "client(url: " + getUrl() + ") failed to connect to server "
                         + getRemoteAddress() + " client-side timeout "
                         + getConnectTimeout() + "ms (elapsed: " + (System.currentTimeMillis() - start) + "ms) from netty client "

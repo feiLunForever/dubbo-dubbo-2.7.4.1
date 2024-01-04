@@ -48,6 +48,8 @@ import static org.apache.dubbo.remoting.utils.UrlUtils.getIdleTimeout;
 
 /**
  * ExchangeServerImpl
+ * 它作为Exchange层的服务端，其核心功能很少，
+ * 只是装饰了Transport层中的Server，通过Transport层中的Server实现了如发送消息、重置URL等功能。
  */
 public class HeaderExchangeServer implements ExchangeServer {
 
@@ -94,7 +96,7 @@ public class HeaderExchangeServer implements ExchangeServer {
 
     @Override
     public void close() {
-        doClose();
+        doClose(); // 服务关闭，装饰了Transport层Server的close方法。
         server.close();
     }
 
@@ -207,7 +209,7 @@ public class HeaderExchangeServer implements ExchangeServer {
 
     @Override
     public void reset(URL url) {
-        server.reset(url);
+        server.reset(url); // 装饰了Transport层Server的重置URL方法
         try {
             int currHeartbeat = getHeartbeat(getUrl());
             int currIdleTimeout = getIdleTimeout(getUrl());
@@ -234,7 +236,7 @@ public class HeaderExchangeServer implements ExchangeServer {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send message " + message
                     + ", cause: The server " + getLocalAddress() + " is closed!");
         }
-        server.send(message);
+        server.send(message); // 调用Transport层Server的send方法。
     }
 
     @Override

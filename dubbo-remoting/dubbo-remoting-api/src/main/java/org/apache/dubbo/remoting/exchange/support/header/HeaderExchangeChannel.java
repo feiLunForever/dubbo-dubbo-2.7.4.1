@@ -37,6 +37,9 @@ import static org.apache.dubbo.common.constants.CommonConstants.TIMEOUT_KEY;
 
 /**
  * ExchangeReceiver
+ * 它是服务端与客户端通讯的桥梁。
+ * Exchange层对Request和Response的封装，就是在HeaderExchangeChannel中实现的。
+ * 它的核心作用是与Transport层相连，并通过Transport中的Client/Server，与远端通讯。
  */
 final class HeaderExchangeChannel implements ExchangeChannel {
 
@@ -109,7 +112,7 @@ final class HeaderExchangeChannel implements ExchangeChannel {
             throw new RemotingException(this.getLocalAddress(), null, "Failed to send request " + request + ", cause: The channel " + this + " is closed!");
         }
         // create request.
-        Request req = new Request();
+        Request req = new Request(); // 创建Request对象
         req.setVersion(Version.getProtocolVersion());
         req.setTwoWay(true);
         req.setData(request);

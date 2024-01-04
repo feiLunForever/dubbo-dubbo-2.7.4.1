@@ -54,10 +54,10 @@ public class HeaderExchangeClient implements ExchangeClient {
 
     public HeaderExchangeClient(Client client, boolean startTimer) {
         Assert.notNull(client, "Client can't be null");
-        this.client = client;
-        this.channel = new HeaderExchangeChannel(client);
+        this.client = client; // 此处的client为Transport层的Client对象，如NettyClient
+        this.channel = new HeaderExchangeChannel(client);  // 构建HeaderExchangeChannel
 
-        if (startTimer) {
+        if (startTimer) { // 启用重新连接和心跳任务
             URL url = client.getUrl();
             startReconnectTask(url);
             startHeartBeatTask(url);
@@ -66,6 +66,7 @@ public class HeaderExchangeClient implements ExchangeClient {
 
     @Override
     public CompletableFuture<Object> request(Object request) throws RemotingException {
+        // 使用HeaderExchangeChannel发送请求，并返回CompletableFuture，用于有返回结果的请求
         return channel.request(request);
     }
 
@@ -81,6 +82,7 @@ public class HeaderExchangeClient implements ExchangeClient {
 
     @Override
     public CompletableFuture<Object> request(Object request, int timeout) throws RemotingException {
+        // 使用HeaderExchangeChannel发送请求，并返回CompletableFuture，用于有返回结果的请求
         return channel.request(request, timeout);
     }
 
@@ -106,11 +108,13 @@ public class HeaderExchangeClient implements ExchangeClient {
 
     @Override
     public void send(Object message) throws RemotingException {
+        // 使用HeaderExchangeChannel发送请求，用于不关心返回结果的请求
         channel.send(message);
     }
 
     @Override
     public void send(Object message, boolean sent) throws RemotingException {
+        // 使用HeaderExchangeChannel发送请求，用于不关心返回结果的请求
         channel.send(message, sent);
     }
 

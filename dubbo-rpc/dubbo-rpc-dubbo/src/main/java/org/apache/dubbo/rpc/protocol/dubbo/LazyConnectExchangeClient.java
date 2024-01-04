@@ -68,6 +68,10 @@ final class LazyConnectExchangeClient implements ExchangeClient {
         this.requestWithWarning = url.getParameter(REQUEST_WITH_WARNING_KEY, false);
     }
 
+    /**
+     * 每次调用发送消息之前，都会调用initClient()，初始化客户端
+     * @throws RemotingException
+     */
     private void initClient() throws RemotingException {
         if (client != null) {
             return;
@@ -75,12 +79,12 @@ final class LazyConnectExchangeClient implements ExchangeClient {
         if (logger.isInfoEnabled()) {
             logger.info("Lazy connect to " + url);
         }
-        connectLock.lock();
+        connectLock.lock(); // 防止并发发起连接
         try {
             if (client != null) {
                 return;
             }
-            this.client = Exchangers.connect(url, requestHandler);
+            this.client = Exchangers.connect(url, requestHandler); // 初始化client，发起连接
         } finally {
             connectLock.unlock();
         }

@@ -78,8 +78,8 @@ final class NettyChannel extends AbstractChannel {
         if (ch == null) {
             return null;
         }
-        NettyChannel ret = CHANNEL_MAP.get(ch);
-        if (ret == null) {
+        NettyChannel ret = CHANNEL_MAP.get(ch); // 从NettyChannel集合中获取
+        if (ret == null) {  // 如果NettyChannel集合中没有，则创建NettyChannel对象，并存入集合
             NettyChannel nettyChannel = new NettyChannel(ch, url, handler);
             if (ch.isActive()) {
                 ret = CHANNEL_MAP.putIfAbsent(ch, nettyChannel);
@@ -88,7 +88,7 @@ final class NettyChannel extends AbstractChannel {
                 ret = nettyChannel;
             }
         }
-        return ret;
+        return ret; // 返回NettyChannel
     }
     /**
      * Remove the inactive channel.
@@ -96,7 +96,7 @@ final class NettyChannel extends AbstractChannel {
      * @param ch netty channel
      */
     static void removeChannelIfDisconnected(Channel ch) {
-        if (ch != null && !ch.isActive()) {
+        if (ch != null && !ch.isActive()) { // 移除断开连接的NettyChannel
             CHANNEL_MAP.remove(ch);
         }
     }
@@ -158,17 +158,17 @@ final class NettyChannel extends AbstractChannel {
     @Override
     public void close() {
         try {
-            super.close();
+            super.close(); // 将close变量标位true
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
         try {
-            removeChannelIfDisconnected(channel);
+            removeChannelIfDisconnected(channel); // 移除当前channel对应的NettyChannel
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
         try {
-            attributes.clear();
+            attributes.clear();  // 清理所有属性
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }
@@ -176,7 +176,7 @@ final class NettyChannel extends AbstractChannel {
             if (logger.isInfoEnabled()) {
                 logger.info("Close netty channel " + channel);
             }
-            channel.close();
+            channel.close(); // 关闭Netty中的channel
         } catch (Exception e) {
             logger.warn(e.getMessage(), e);
         }

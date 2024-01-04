@@ -129,12 +129,13 @@ public class NettyServer extends AbstractServer implements Server {
         try {
             if (channel != null) {
                 // unbind.
-                channel.close();
+                channel.close(); // 关闭服务端channel
             }
         } catch (Throwable e) {
             logger.warn(e.getMessage(), e);
         }
         try {
+            // 关闭所有客户端Channel
             Collection<org.apache.dubbo.remoting.Channel> channels = getChannels();
             if (channels != null && channels.size() > 0) {
                 for (org.apache.dubbo.remoting.Channel channel : channels) {
@@ -150,6 +151,7 @@ public class NettyServer extends AbstractServer implements Server {
         }
         try {
             if (bootstrap != null) {
+                // 关闭服务
                 bossGroup.shutdownGracefully();
                 workerGroup.shutdownGracefully();
             }
@@ -158,7 +160,7 @@ public class NettyServer extends AbstractServer implements Server {
         }
         try {
             if (channels != null) {
-                channels.clear();
+                channels.clear(); // 移除所有客户端channel
             }
         } catch (Throwable e) {
             logger.warn(e.getMessage(), e);

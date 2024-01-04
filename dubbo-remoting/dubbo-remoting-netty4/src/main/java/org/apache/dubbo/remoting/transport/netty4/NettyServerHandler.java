@@ -65,24 +65,30 @@ public class NettyServerHandler extends ChannelDuplexHandler {
 
     @Override
     public void channelActive(ChannelHandlerContext ctx) throws Exception {
+        // 获取或创建NettyChannel
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         try {
+            // 如果创建成功，将创建好的NettyChannel保存至channels集合（存活的NettyChannel）
             if (channel != null) {
                 channels.put(NetUtils.toAddressString((InetSocketAddress) ctx.channel().remoteAddress()), channel);
             }
             handler.connected(channel);
         } finally {
+            // 如果客户端Channel已经断开连接，则将当前Channel从全局集合中移除
             NettyChannel.removeChannelIfDisconnected(ctx.channel());
         }
     }
 
     @Override
     public void channelInactive(ChannelHandlerContext ctx) throws Exception {
+        // 获取或创建NettyChannel
         NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
         try {
+            // 从channels（存活的NettyChannel）中移除当前NettyChannel
             channels.remove(NetUtils.toAddressString((InetSocketAddress) ctx.channel().remoteAddress()));
             handler.disconnected(channel);
         } finally {
+            // 如果客户端Channel已经断开连接，则将当前Channel从全局集合中移除
             NettyChannel.removeChannelIfDisconnected(ctx.channel());
         }
     }
@@ -113,12 +119,13 @@ public class NettyServerHandler extends ChannelDuplexHandler {
     @Override
     public void userEventTriggered(ChannelHandlerContext ctx, Object evt) throws Exception {
         // server will close channel when server don't receive any heartbeat from client util timeout.
-        if (evt instanceof IdleStateEvent) {
+        if (evt instanceof IdleStateEvent) { // 当一定时间内没有收到心跳消息，则关闭客户端Channel
             NettyChannel channel = NettyChannel.getOrAddChannel(ctx.channel(), url, handler);
             try {
                 logger.info("IdleStateEvent triggered, close channel " + channel);
-                channel.close();
+                channel.close(); // 关闭客户端Channel
             } finally {
+                // 如果客户端Channel已经断开连接，则将当前Channel从全局集合中移除
                 NettyChannel.removeChannelIfDisconnected(ctx.channel());
             }
         }

@@ -46,7 +46,7 @@ final class ReferenceCountExchangeClient implements ExchangeClient {
 
     public ReferenceCountExchangeClient(ExchangeClient client) {
         this.client = client;
-        referenceCount.incrementAndGet();
+        referenceCount.incrementAndGet(); // 在构造时，引用计数加一
         this.url = client.getUrl();
     }
 
