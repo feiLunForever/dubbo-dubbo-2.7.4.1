@@ -46,30 +46,35 @@ public class RandomLoadBalance extends AbstractLoadBalance {
     @Override
     protected <T> Invoker<T> doSelect(List<Invoker<T>> invokers, URL url, Invocation invocation) {
         // Number of invokers
-        int length = invokers.size();
+        int length = invokers.size();  // invoker的总数
         // Every invoker has the same weight?
-        boolean sameWeight = true;
+        boolean sameWeight = true; // 每个invoker的权重是否一样
         // the weight of every invokers
-        int[] weights = new int[length];
+        int[] weights = new int[length]; // 每个invoker的权重值
         // the first invoker's weight
-        int firstWeight = getWeight(invokers.get(0), invocation);
+        int firstWeight = getWeight(invokers.get(0), invocation); // 第一个invoker的权重值
         weights[0] = firstWeight;
         // The sum of weights
-        int totalWeight = firstWeight;
+        int totalWeight = firstWeight; // 所有invoker的权重值之和
         for (int i = 1; i < length; i++) {
             int weight = getWeight(invokers.get(i), invocation);
             // save for later use
-            weights[i] = weight;
+            weights[i] = weight; // 将权重值保存到weights数组中
             // Sum
             totalWeight += weight;
-            if (sameWeight && weight != firstWeight) {
+            if (sameWeight && weight != firstWeight) { // 校验得出，权重是否一样，如果有一个不一样，则将sameWeight置为false
                 sameWeight = false;
             }
         }
-        if (totalWeight > 0 && !sameWeight) {
+        if (totalWeight > 0 && !sameWeight) { // invoker权重值不同的计算方法
             // If (not every invoker has the same weight & at least one invoker's weight>0), select randomly based on totalWeight.
-            int offset = ThreadLocalRandom.current().nextInt(totalWeight);
+            int offset = ThreadLocalRandom.current().nextInt(totalWeight); // 产出一个[0~totalWeight]随机数(不包含totalWeight).
             // Return a invoker based on the random value.
+            // 根据产出的随机数，获取invoker
+            // 以下逻辑可以这么理解
+            // 举例，有A、B两个服务，权重分别是2、3
+            // 权重值之和为5，随机数区间为[0,1,2,3,4]，A服务被选中的概率为2/5，取值范围[0,1]，B服务被选中的概率为3/5，取值范围[2,3,4]
+            // 如果随机数为4，则命中B服务；如果随机数为1，则命中A服务
             for (int i = 0; i < length; i++) {
                 offset -= weights[i];
                 if (offset < 0) {
