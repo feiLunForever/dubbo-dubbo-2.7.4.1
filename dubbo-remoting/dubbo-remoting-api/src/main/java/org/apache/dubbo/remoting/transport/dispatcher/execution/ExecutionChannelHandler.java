@@ -42,14 +42,18 @@ public class ExecutionChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
-        ExecutorService executor = getExecutorService();
+        ExecutorService executor = getExecutorService(); // 获取线程池
+        // 只处理请求消息，只将请求消息派发至线程池
+        // 消息分为多种类型，这里只处理Request类型的消息
         if (message instanceof Request) {
             try {
+                // 分发至线程池
                 executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
             } catch (Throwable t) {
                 // FIXME: when the thread pool is full, SERVER_THREADPOOL_EXHAUSTED_ERROR cannot return properly,
                 // therefore the consumer side has to wait until gets timeout. This is a temporary solution to prevent
                 // this scenario from happening, but a better solution should be considered later.
+                // 这里和AllChannelHandler一样，需要处理线程池满的异常
                 if (t instanceof RejectedExecutionException) {
                     Request request = (Request) message;
                     if (request.isTwoWay()) {
@@ -65,7 +69,7 @@ public class ExecutionChannelHandler extends WrappedChannelHandler {
                 throw new ExecutionException(message, channel, getClass() + " error when process received event.", t);
             }
         } else {
-            handler.received(channel, message);
+            handler.received(channel, message); // 其他消息类型，直接使用当前IO的线程处理
         }
     }
 }

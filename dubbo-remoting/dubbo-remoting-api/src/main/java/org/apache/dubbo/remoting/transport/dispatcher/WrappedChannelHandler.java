@@ -72,27 +72,27 @@ public class WrappedChannelHandler implements ChannelHandlerDelegate {
 
     @Override
     public void connected(Channel channel) throws RemotingException {
-        handler.connected(channel);
+        handler.connected(channel); // 直接调用包装的handler的connected方法，不派发线程池
     }
 
     @Override
     public void disconnected(Channel channel) throws RemotingException {
-        handler.disconnected(channel);
+        handler.disconnected(channel); // 直接调用包装的handler的disconnected方法，不派发线程池
     }
 
     @Override
     public void sent(Channel channel, Object message) throws RemotingException {
-        handler.sent(channel, message);
+        handler.sent(channel, message); // 直接调用包装的handler的sent方法，不派发线程池
     }
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
-        handler.received(channel, message);
+        handler.received(channel, message); // 直接调用包装的handler的received方法，不派发线程池
     }
 
     @Override
     public void caught(Channel channel, Throwable exception) throws RemotingException {
-        handler.caught(channel, exception);
+        handler.caught(channel, exception); // 直接调用包装的handler的caught方法，不派发线程池
     }
 
     public ExecutorService getExecutor() {

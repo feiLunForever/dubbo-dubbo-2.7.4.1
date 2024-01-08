@@ -49,19 +49,22 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
     public ConnectionOrderedChannelHandler(ChannelHandler handler, URL url) {
         super(handler, url);
         String threadName = url.getParameter(THREAD_NAME_KEY, DEFAULT_THREAD_NAME);
+        // 初始化处理连接的线程池
         connectionExecutor = new ThreadPoolExecutor(1, 1,
                 0L, TimeUnit.MILLISECONDS,
                 new LinkedBlockingQueue<Runnable>(url.getPositiveParameter(CONNECT_QUEUE_CAPACITY, Integer.MAX_VALUE)),
                 new NamedThreadFactory(threadName, true),
                 new AbortPolicyWithReport(threadName, url)
         );  // FIXME There's no place to release connectionExecutor!
+        // 队列警告限制，默认1000个
         queuewarninglimit = url.getParameter(CONNECT_QUEUE_WARNING_SIZE, DEFAULT_CONNECT_QUEUE_WARNING_SIZE);
     }
 
     @Override
     public void connected(Channel channel) throws RemotingException {
         try {
-            checkQueueLength();
+            checkQueueLength(); // 校验队列长度是否超限，超限发出警告
+            // 使用专门用于处理连接的线程池处理连接
             connectionExecutor.execute(new ChannelEventRunnable(channel, handler, ChannelState.CONNECTED));
         } catch (Throwable t) {
             throw new ExecutionException("connect event", channel, getClass() + " error when process connected event .", t);
@@ -71,7 +74,8 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
     @Override
     public void disconnected(Channel channel) throws RemotingException {
         try {
-            checkQueueLength();
+            checkQueueLength(); // 校验队列长度是否超限，超限发出警告
+            // 使用专门用于处理连接的线程池处理断开连接
             connectionExecutor.execute(new ChannelEventRunnable(channel, handler, ChannelState.DISCONNECTED));
         } catch (Throwable t) {
             throw new ExecutionException("disconnected event", channel, getClass() + " error when process disconnected event .", t);
@@ -80,11 +84,13 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void received(Channel channel, Object message) throws RemotingException {
-        ExecutorService executor = getExecutorService();
+        ExecutorService executor = getExecutorService(); // 获取线程池
         try {
+            // 将接收消息的处理逻辑派发至线程池处理
             executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.RECEIVED, message));
         } catch (Throwable t) {
             //fix, reject exception can not be sent to consumer because thread pool is full, resulting in consumers waiting till timeout.
+            // 这里和AllChannelHandler一样，需要处理线程池满的异常
             if (message instanceof Request && t instanceof RejectedExecutionException) {
                 Request request = (Request) message;
                 if (request.isTwoWay()) {
@@ -102,8 +108,9 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
 
     @Override
     public void caught(Channel channel, Throwable exception) throws RemotingException {
-        ExecutorService executor = getExecutorService();
+        ExecutorService executor = getExecutorService(); // 获取线程池
         try {
+            // 将异常操作派发至线程池处理
             executor.execute(new ChannelEventRunnable(channel, handler, ChannelState.CAUGHT, exception));
         } catch (Throwable t) {
             throw new ExecutionException("caught event", channel, getClass() + " error when process caught event .", t);
@@ -111,6 +118,7 @@ public class ConnectionOrderedChannelHandler extends WrappedChannelHandler {
     }
 
     private void checkQueueLength() {
+        // 校验当前线程的队列是否超过预警值，如果超过了，打印警告日志。
         if (connectionExecutor.getQueue().size() > queuewarninglimit) {
             logger.warn(new IllegalThreadStateException("connectionordered channel handler `queue size: " + connectionExecutor.getQueue().size() + " exceed the warning limit number :" + queuewarninglimit));
         }

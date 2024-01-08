@@ -29,7 +29,7 @@ public class DirectDispatcher implements Dispatcher {
 
     @Override
     public ChannelHandler dispatch(ChannelHandler handler, URL url) {
-        return handler;
+        return handler; // 直接放回原处理器
     }
 
 }
