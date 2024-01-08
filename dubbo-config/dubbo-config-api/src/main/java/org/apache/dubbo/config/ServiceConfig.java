@@ -451,10 +451,10 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     @SuppressWarnings({"unchecked", "rawtypes"})
     private void doExportUrls() {
         // 加载注册中心，将服务注册到所有的注册中心里。
-        // registryURLs示例：registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&pid=14029&qos.port=22222&registry=zookeeper&timestamp=1703839338878
+        // registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-provider&dubbo=2.0.2&pid=14029&qos.port=22222&registry=zookeeper&timestamp=1703839338878
         List<URL> registryURLs = loadRegistries(true);
         //此处的protocols为要注册的协议
-        //protocols示例：<dubbo:protocol name="dubbo" valid="true" prefix="dubbo.protocols." id="dubbo" />
+        // <dubbo:protocol name="dubbo" valid="true" prefix="dubbo.protocols." id="dubbo" />
         for (ProtocolConfig protocolConfig : protocols) {
             // 服务路径key，下面会保存到全局服务容器里(ApplicationModel.PROVIDED_SERVICES)
             // pathKey示例：org.apache.dubbo.demo.DemoService
@@ -467,7 +467,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     }
 
     private void doExportUrlsFor1Protocol(ProtocolConfig protocolConfig, List<URL> registryURLs) {
-        String name = protocolConfig.getName();
+        String name = protocolConfig.getName(); // 协议名，默认为dubbo
         if (StringUtils.isEmpty(name)) {
             name = DUBBO;
         }
@@ -570,7 +570,7 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
 
         //将服务信息，转化为URL对象
         //将来暴露服务，都是从URL中解析的。
-        //url数据示例：dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&bind.ip=192.168.1.12&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=14980&qos.port=22222&release=&side=provider&timestamp=1703840125152
+        // dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&bind.ip=192.168.1.12&bind.port=20880&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=14980&qos.port=22222&release=&side=provider&timestamp=1703840125152
         URL url = new URL(name, host, port, getContextPath(protocolConfig).map(p -> p + "/" + path).orElse(path), map);
 
         if (ExtensionLoader.getExtensionLoader(ConfiguratorFactory.class)
