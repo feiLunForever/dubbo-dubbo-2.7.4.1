@@ -70,12 +70,13 @@ public class SpringExtensionFactory implements ExtensionFactory {
     public <T> T getExtension(Class<T> type, String name) {
 
         //SPI should be get from SpiExtensionFactory
-        if (type.isInterface() && type.isAnnotationPresent(SPI.class)) {
+        if (type.isInterface() && type.isAnnotationPresent(SPI.class)) { // 属性类型跳过SPI注解
             return null;
         }
 
-        for (ApplicationContext context : CONTEXTS) {
+        for (ApplicationContext context : CONTEXTS) { // 遍历spirng的ApplicationContext容器
             if (context.containsBean(name)) {
+                // 使用过spring的应该知道很熟悉的方法，调用 getBean 得到bean
                 Object bean = context.getBean(name);
                 if (type.isInstance(bean)) {
                     return (T) bean;
@@ -88,7 +89,7 @@ public class SpringExtensionFactory implements ExtensionFactory {
         if (Object.class == type) {
             return null;
         }
-
+        // 这边一样的道理，如果通过name获取不到，尝试通过Class 的方式获取
         for (ApplicationContext context : CONTEXTS) {
             try {
                 return context.getBean(type);

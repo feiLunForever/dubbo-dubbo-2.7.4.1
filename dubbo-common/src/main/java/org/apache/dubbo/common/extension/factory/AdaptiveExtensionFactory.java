@@ -38,11 +38,14 @@ public class AdaptiveExtensionFactory implements ExtensionFactory {
         for (String name : loader.getSupportedExtensions()) {
             list.add(loader.getExtension(name));
         }
+        // factories 把 ExtensionFactory 的所有实现类都加载出来了包括
+        // SpiExtensionFactory 和 SpringExtensionFactory
         factories = Collections.unmodifiableList(list);
     }
 
     @Override
     public <T> T getExtension(Class<T> type, String name) {
+        // 循环遍历，通过持有的`SpiExtensionFactory`和`SpringExtensionFactory`获取扩展点
         for (ExtensionFactory factory : factories) {
             T extension = factory.getExtension(type, name);
             if (extension != null) {

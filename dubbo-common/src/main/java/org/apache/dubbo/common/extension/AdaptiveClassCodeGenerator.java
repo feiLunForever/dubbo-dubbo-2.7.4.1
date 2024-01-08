@@ -91,20 +91,20 @@ public class AdaptiveClassCodeGenerator {
         }
 
         StringBuilder code = new StringBuilder();
-        code.append(generatePackageInfo());
-        code.append(generateImports());
-        code.append(generateClassDeclaration());
+        code.append(generatePackageInfo()); // 生成 package xxx
+        code.append(generateImports()); // 生成 import xxx
+        code.append(generateClassDeclaration()); // 生成 class 声明语句
 
-        Method[] methods = type.getMethods();
+        Method[] methods = type.getMethods(); // 生成方法
         for (Method method : methods) {
             code.append(generateMethod(method));
         }
-        code.append("}");
+        code.append("}"); // 闭合class声明语句
 
         if (logger.isDebugEnabled()) {
             logger.debug(code.toString());
         }
-        return code.toString();
+        return code.toString(); // 最后将完整的Class字符串返回
     }
 
     /**
