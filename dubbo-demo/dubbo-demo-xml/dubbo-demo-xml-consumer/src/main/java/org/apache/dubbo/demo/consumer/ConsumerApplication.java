@@ -22,7 +22,7 @@ import org.springframework.context.support.ClassPathXmlApplicationContext;
 
 import java.io.IOException;
 
-public class Application {
+public class ConsumerApplication {
     public static void main(String[] args) throws IOException {
         ClassPathXmlApplicationContext context = new ClassPathXmlApplicationContext("spring/dubbo-consumer.xml");
         context.start();

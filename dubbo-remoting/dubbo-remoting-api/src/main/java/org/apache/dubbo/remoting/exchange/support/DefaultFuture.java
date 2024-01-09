@@ -143,14 +143,16 @@ public class DefaultFuture extends CompletableFuture<Object> {
 
     public static void received(Channel channel, Response response, boolean timeout) {
         try {
+            // 获取当前Future，并从全局中移除
             DefaultFuture future = FUTURES.remove(response.getId());
             if (future != null) {
+                // 如果是超时，则从时间轮中移除，不再进行超时检查
                 Timeout t = future.timeoutCheckTask;
                 if (!timeout) {
                     // decrease Time
-                    t.cancel();
+                    t.cancel(); // 取消超时检查
                 }
-                future.doReceived(response);
+                future.doReceived(response); // 处理返回结果，将结果返回给调用方
             } else {
                 logger.warn("The timeout response finally returned at "
                         + (new SimpleDateFormat("yyyy-MM-dd HH:mm:ss.SSS").format(new Date()))
@@ -183,11 +185,20 @@ public class DefaultFuture extends CompletableFuture<Object> {
         if (res == null) {
             throw new IllegalStateException("response cannot be null");
         }
+        //在发送消息的时候
+        //DubboInvoker里返回的是DefaultFuture，并返回AsyncRpcResult给AsyncToSyncInvoker
+        //同时，注册了DefaultFuture.whenComplete，调用AsyncRpcResult.complete
+        //在AsyncToSyncInvoker中通过asyncRpcResult.get()等待结果返回
+        //因此，当执行到此地的complete和completeExceptionally时，就会调用AsyncRpcResult.complete
+        //然后触发asyncRpcResult.get()执行结束，并获取此地设置的返回值
+        //至此，调用结束
         if (res.getStatus() == Response.OK) {
-            this.complete(res.getResult());
+            this.complete(res.getResult()); // 如果响应状态是成功，完成并设定返回值
         } else if (res.getStatus() == Response.CLIENT_TIMEOUT || res.getStatus() == Response.SERVER_TIMEOUT) {
+            // 返回超时异常TimeoutException
             this.completeExceptionally(new TimeoutException(res.getStatus() == Response.SERVER_TIMEOUT, channel, res.getErrorMessage()));
         } else {
+            // 返回远程调用异常RemotingException
             this.completeExceptionally(new RemotingException(channel, res.getErrorMessage()));
         }
     }

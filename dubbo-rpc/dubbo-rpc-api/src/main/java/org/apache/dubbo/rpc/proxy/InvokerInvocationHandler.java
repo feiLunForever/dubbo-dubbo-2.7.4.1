@@ -29,6 +29,8 @@ import java.lang.reflect.Method;
  */
 public class InvokerInvocationHandler implements InvocationHandler {
     private static final Logger logger = LoggerFactory.getLogger(InvokerInvocationHandler.class);
+    // 此处的invoker为MockClusterInvoker
+    // 通过MockClusterWrapper.join创建
     private final Invoker<?> invoker;
 
     public InvokerInvocationHandler(Invoker<?> handler) {
@@ -37,8 +39,8 @@ public class InvokerInvocationHandler implements InvocationHandler {
 
     @Override
     public Object invoke(Object proxy, Method method, Object[] args) throws Throwable {
-        String methodName = method.getName();
-        Class<?>[] parameterTypes = method.getParameterTypes();
+        String methodName = method.getName(); // 调用的方法名
+        Class<?>[] parameterTypes = method.getParameterTypes(); // 调用的方法参数
         if (method.getDeclaringClass() == Object.class) {
             return method.invoke(invoker, args);
         }
