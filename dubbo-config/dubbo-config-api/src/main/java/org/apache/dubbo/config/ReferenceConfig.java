@@ -247,7 +247,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
             throw new IllegalStateException("The invoker of ReferenceConfig(" + url + ") has already destroyed!");
         }
         if (ref == null) {
-            init();
+            init(); // 开始初始化
         }
         return ref;
     }
@@ -390,6 +390,7 @@ public class ReferenceConfig<T> extends AbstractReferenceConfig {
                             // 给每个注册中心URL添加refer参数
                             // refer参数的值，就是服务消费者的基本信息，包括应用名、版本号、引用的接口等。
                             // registry://127.0.0.1:2181/org.apache.dubbo.registry.RegistryService?application=demo-consumer&dubbo=2.0.2&pid=25237&qos.port=33333&refer=application%3Ddemo-consumer%26check%3Dfalse%26dubbo%3D2.0.2%26interface%3Dorg.apache.dubbo.demo.DemoService%26lazy%3Dfalse%26methods%3DsayHello%26pid%3D25237%26qos.port%3D33333%26register.ip%3D192.168.1.12%26side%3Dconsumer%26sticky%3Dfalse%26timestamp%3D1703908463566&registry=zookeeper&timestamp=1703908463906
+                            // application=demo-consumer&check=false&dubbo=2.0.2&interface=org.apache.dubbo.demo.DemoService&lazy=false&methods=sayHello&pid=94504&qos.port=33333&register.ip=10.67.72.242&side=consumer&sticky=false&timestamp=1704784198722
                             urls.add(u.addParameterAndEncoded(REFER_KEY, StringUtils.toQueryString(map)));
                         }
                     }
