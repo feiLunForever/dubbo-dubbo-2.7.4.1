@@ -163,7 +163,7 @@ public abstract class Proxy {
                 }
                 ccp.addInterface(ics[i]); // 添加要实现的接口
 
-                for (Method method : ics[i].getMethods()) {
+                for (Method method : ics[i].getMethods()) { // 通过反射，实现接口的所有方法
                     String desc = ReflectUtils.getDesc(method);
                     if (worked.contains(desc)) {
                         continue;
@@ -174,9 +174,14 @@ public abstract class Proxy {
                     worked.add(desc);
 
                     int ix = methods.size();
-                    Class<?> rt = method.getReturnType();
-                    Class<?>[] pts = method.getParameterTypes();
+                    Class<?> rt = method.getReturnType(); // 方法返回类型
+                    Class<?>[] pts = method.getParameterTypes(); // 方法参数类型
 
+                    //方法体
+                    //方法体的内容都是类似的:
+                    //1.获取参数
+                    //2.调用handler.invoke
+                    //3.返回结果
                     StringBuilder code = new StringBuilder("Object[] args = new Object[").append(pts.length).append("];");
                     for (int j = 0; j < pts.length; j++) {
                         code.append(" args[").append(j).append("] = ($w)$").append(j + 1).append(";");
@@ -187,6 +192,7 @@ public abstract class Proxy {
                     }
 
                     methods.add(method);
+                    // 根据要实现的方法信息，给ccp添加实现方法
                     ccp.addMethod(method.getName(), method.getModifiers(), rt, pts, method.getExceptionTypes(), code.toString());
                 }
             }
@@ -196,24 +202,29 @@ public abstract class Proxy {
             }
 
             // create ProxyInstance class.
-            String pcn = pkg + ".proxy" + id;
-            ccp.setClassName(pcn);
+            String pcn = pkg + ".proxy" + id; // 创建ccp代理类，真正代理服务调用的类
+            ccp.setClassName(pcn); // 类名，如：org.apache.dubbo.common.bytecode.proxy0
+            // 添加methods成员变量，用于保存实现接口的所有方法
             ccp.addField("public static java.lang.reflect.Method[] methods;");
+            // 添加handler成员变量，用于处理调用后的逻辑
             ccp.addField("private " + InvocationHandler.class.getName() + " handler;");
+            // 添加构造方法，参数为InvocationHandler
             ccp.addConstructor(Modifier.PUBLIC, new Class<?>[]{InvocationHandler.class}, new Class<?>[0], "handler=$1;");
-            ccp.addDefaultConstructor();
-            Class<?> clazz = ccp.toClass();
+            ccp.addDefaultConstructor(); // 添加默认构造方法
+            Class<?> clazz = ccp.toClass(); // 将ccp转化为Class
+            // 设置方法，即将所有实现的接口方法，都保存到成员遍历methods中
             clazz.getField("methods").set(null, methods.toArray(new Method[0]));
 
             // create Proxy class.
-            String fcn = Proxy.class.getName() + id;
-            ccm = ClassGenerator.newInstance(cl);
-            ccm.setClassName(fcn);
-            ccm.addDefaultConstructor();
-            ccm.setSuperClass(Proxy.class);
+            String fcn = Proxy.class.getName() + id; // 创建ccm类，用于生成ccp对象
+            ccm = ClassGenerator.newInstance(cl); // 实例化ccm
+            ccm.setClassName(fcn); // 类名
+            ccm.addDefaultConstructor(); // 添加无参构造
+            ccm.setSuperClass(Proxy.class); // ccm继承至Proxy
+            // 给ccm添加newInstance方法，内容就是实例化ccp生成的类。
             ccm.addMethod("public Object newInstance(" + InvocationHandler.class.getName() + " h){ return new " + pcn + "($1); }");
             Class<?> pc = ccm.toClass();
-            proxy = (Proxy) pc.newInstance();
+            proxy = (Proxy) pc.newInstance(); // 实例化Proxy
         } catch (RuntimeException e) {
             throw e;
         } catch (Exception e) {
