@@ -127,7 +127,8 @@ public class ZookeeperRegistry extends FailbackRegistry {
         try {
             //在/dubbo/接口全限定名/provider/下创建当前服务的临时节点
             //临时节点包含了当前服务信息，如应用名、接口名、方法名、版本号等
-            //dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=51508&release=&side=provider&timestamp=1703927608630
+            // url --> dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=51508&release=&side=provider&timestamp=1703927608630
+            // toUrlPath --> /dubbo/org.apache.dubbo.demo.DemoService/providers/dubbo%3A%2F%2F10.67.72.242%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26bean.name%3Dorg.apache.dubbo.demo.DemoService%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D28805%26release%3D%26side%3Dprovider%26timestamp%3D1704868041760
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
         } catch (Throwable e) {
             throw new RpcException("Failed to register " + url + " to zookeeper " + getUrl() + ", cause: " + e.getMessage(), e);

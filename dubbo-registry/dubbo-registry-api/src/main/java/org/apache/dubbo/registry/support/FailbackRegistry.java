@@ -357,7 +357,7 @@ public abstract class FailbackRegistry extends AbstractRegistry {
             throw new IllegalArgumentException("notify listener == null");
         }
         try {
-            doNotify(url, listener, urls);
+            doNotify(url, listener, urls); // 调用模板方法doNotify()
         } catch (Exception t) {
             // Record a failed registration request to a failed list, retry regularly
             addFailedNotified(url, listener, urls);
@@ -366,6 +366,8 @@ public abstract class FailbackRegistry extends AbstractRegistry {
     }
 
     protected void doNotify(URL url, NotifyListener listener, List<URL> urls) {
+        // 子类没有实现模板方法doNotify()
+        // 直接调用了父类AbstractRegistry.notify()方法
         super.notify(url, listener, urls);
     }
 
