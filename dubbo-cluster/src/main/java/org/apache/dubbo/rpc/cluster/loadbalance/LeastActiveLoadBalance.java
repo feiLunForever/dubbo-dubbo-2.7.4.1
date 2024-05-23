@@ -25,6 +25,9 @@ import java.util.List;
 import java.util.concurrent.ThreadLocalRandom;
 
 /**
+ * 最少活跃调用数算法
+ *
+ *
  * LeastActiveLoadBalance
  * <p>
  * Filter the number of invokers with the least number of active calls and count the weights and quantities of these invokers.
@@ -61,22 +64,23 @@ public class LeastActiveLoadBalance extends AbstractLoadBalance {
 
 
         // Filter out all the least active invokers
-        for (int i = 0; i < length; i++) { // 过滤出所有具有相同[最小活跃数]的Invoker
+        // 过滤出所有具有相同[最小活跃数]的Invoker
+        for (int i = 0; i < length; i++) { // 获取所有的invoker并执行计算
             Invoker<T> invoker = invokers.get(i);
             // Get the active number of the invoker
-            // 获取Invoker的活跃数
+            // // 通过RpcStatus获取当前这个invoker并发数
             int active = RpcStatus.getStatus(invoker.getUrl(), invocation.getMethodName()).getActive();
             // Get the weight of the invoker's configuration. The default value is 100.
-            // 获取Invoker的权重值，默认为100
+            // 通过预热机制计算权重值
             int afterWarmup = getWeight(invoker, invocation);
             // save for later use
             // 将Invoker的权重值保存至weights数组
             weights[i] = afterWarmup;
             // If it is the first invoker or the active number of the invoker is less than the current least active number
-            // 如果是第一个Invoker，或者当前Invoker的活跃数小于最小活跃数
-            // 重新计算
+            // 发现最小的活跃数，重新开始计算
             if (leastActive == -1 || active < leastActive) {
                 // Reset the active number of the current invoker to the least active number
+                // 记录leastActive 为当前的活跃数，并重置最小计数，基于当前最小计数重新计数
                 leastActive = active; // 将最小活跃数置为当前Invoker的活跃数
                 // Reset the number of least active invokers
                 leastCount = 1; // 将最小活跃数的Invoker数量置为1
@@ -121,13 +125,13 @@ public class LeastActiveLoadBalance extends AbstractLoadBalance {
             int offsetWeight = ThreadLocalRandom.current().nextInt(totalWeight);
             // Return a invoker based on the random value.
             // 根据随机数，返回Invoker.
-            //假定当前有两个最小活跃数的Invoker，A和B，对应的权重是[3,2]
-            //如果产生的offsetWeight=3
-            //那么，3-3=0，不小于0，不满足条件，继续循环
-            //此时，0-2=-2，小于0，满足条件，则返回服务B
+            // 假定当前有两个最小活跃数的Invoker，A和B，对应的权重是[3,2]
+            // 如果产生的offsetWeight=3
+            // 那么，3-3=0，不小于0，不满足条件，继续循环
+            // 此时，0-2=-2，小于0，满足条件，则返回服务B
             //
-            //如果产生的offsetWeight=2
-            //那么，2-3=-1，小于0，满足条件，则返回服务A
+            // 如果产生的offsetWeight=2
+            // 那么，2-3=-1，小于0，满足条件，则返回服务A
             for (int i = 0; i < leastCount; i++) {
                 int leastIndex = leastIndexes[i]; // 用随机数减去Invoker的权重值
                 offsetWeight -= weights[leastIndex];

@@ -63,6 +63,12 @@ public abstract class AbstractLoadBalance implements LoadBalance {
 
 
     /**
+     *
+     * 首先会获取服务启动时间，然后再与预热时间进行比较。如果启动时间小于预热时间，则会调用 calculateWarmupWeight 方法来重新计算预热权重
+     * ---> 预热权重最小为 1，并在预热时间内随启动时间逐渐增加
+     * 这样设计的原因在于：JVM 从启动成功到处于最佳状态需要一段时间，在这段时间内虽然服务可以接收请求，但显然不应该接收过多请求。
+     * 所以，Dubbo 通过预热机制确保在预热时间内该服务受到一定的保护，直到其处于最佳运行状态
+     *
      * Get the weight of the invoker's invocation which takes warmup time into account
      * if the uptime is within the warmup time, the weight will be reduce proportionally
      *
@@ -71,6 +77,7 @@ public abstract class AbstractLoadBalance implements LoadBalance {
      * @return weight
      */
     int getWeight(Invoker<?> invoker, Invocation invocation) {
+        // 从URL中获取权重
         int weight = invoker.getUrl().getMethodParameter(invocation.getMethodName(), WEIGHT_KEY, DEFAULT_WEIGHT);
         if (weight > 0) {
             long timestamp = invoker.getUrl().getParameter(TIMESTAMP_KEY, 0L);
@@ -79,9 +86,9 @@ public abstract class AbstractLoadBalance implements LoadBalance {
                 if (uptime < 0) {
                     return 1;
                 }
-                int warmup = invoker.getUrl().getParameter(WARMUP_KEY, DEFAULT_WARMUP);
+                int warmup = invoker.getUrl().getParameter(WARMUP_KEY, DEFAULT_WARMUP); // 从URL中获取预热时间
                 if (uptime > 0 && uptime < warmup) {
-                    weight = calculateWarmupWeight((int)uptime, warmup, weight);
+                    weight = calculateWarmupWeight((int)uptime, warmup, weight); // 计算预热权重
                 }
             }
         }
