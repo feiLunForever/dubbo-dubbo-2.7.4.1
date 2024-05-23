@@ -27,4 +27,6 @@
 
     <dubbo:reference id="demoService" check="false" interface="org.apache.dubbo.demo.DemoService"/>
 
+    <dubbo:consumer timeout="200000"/>
+
 </beans>

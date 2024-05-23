@@ -89,12 +89,10 @@ public class DubboInvoker<T> extends AbstractInvoker<T> {
             currentClient = clients[index.getAndIncrement() % clients.length];
         }
         try {
-            // 判断是否单向通讯
-            // 单向通讯，即只发送请求，不关心结果
-            boolean isOneway = RpcUtils.isOneway(getUrl(), invocation);
+            boolean isOneway = RpcUtils.isOneway(getUrl(), invocation); // 单向通讯，即只发送请求，不关心结果
             int timeout = getUrl().getMethodPositiveParameter(methodName, TIMEOUT_KEY, DEFAULT_TIMEOUT);
-            // 如果是单向通讯，调用的是currentClient.send()，直接返回结果
-            if (isOneway) {
+
+            if (isOneway) { // 如果是单向通讯，调用的是currentClient.send()，直接返回结果
                 boolean isSent = getUrl().getMethodParameter(methodName, Constants.SENT_KEY, false);
                 currentClient.send(inv, isSent);
                 return AsyncRpcResult.newDefaultAsyncResult(invocation);

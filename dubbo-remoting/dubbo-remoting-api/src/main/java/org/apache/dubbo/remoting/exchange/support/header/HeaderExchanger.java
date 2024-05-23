@@ -42,6 +42,7 @@ public class HeaderExchanger implements Exchanger {
     @Override
     public ExchangeServer bind(URL url, ExchangeHandler handler) throws RemotingException {
         // 启动服务的核心代码是Transporters.bind
+        // HeaderExchanger 在创建 HeaderExchangeServer 的同时也加入心跳检测功能
         return new HeaderExchangeServer(Transporters.bind(url, new DecodeHandler(new HeaderExchangeHandler(handler))));
     }
 

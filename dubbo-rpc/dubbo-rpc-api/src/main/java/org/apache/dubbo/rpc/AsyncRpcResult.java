@@ -22,6 +22,7 @@ import org.apache.dubbo.rpc.protocol.dubbo.FutureAdapter;
 
 import java.util.Map;
 import java.util.concurrent.CompletableFuture;
+import java.util.concurrent.ExecutionException;
 import java.util.function.BiConsumer;
 
 /**
@@ -262,6 +263,11 @@ public class AsyncRpcResult extends AbstractResult {
         }
         asyncRpcResult.complete(appResponse);
         return asyncRpcResult;
+    }
+
+    @Override
+    public Result get() throws InterruptedException, ExecutionException {
+        return super.get();
     }
 }
 

@@ -652,6 +652,11 @@ public class ServiceConfig<T> extends AbstractServiceConfig {
     @SuppressWarnings({"unchecked", "rawtypes"})
     /**
      * always export injvm
+     * 远程调用只会发生在跨 JVM 的场景，如果在同一个 JVM 中同时存在某一个服务的提供者和消费者，
+     * 那么就可以将服务发布和引用过程控制在同一个 JVM 之内，从而避免远程网络通信所导致的性能消耗
+     *
+     * 所谓的本地暴露，Dubbo 只是将 InjvmExporter 对象放置到一个 Map 内存对象中。
+     * 这样，我们就可以直接从 JVM 的内存中获取 InjvmExporter 对象来完成服务之间的调用
      */
     private void exportLocal(URL url) {
         URL local = URLBuilder.from(url)

@@ -84,6 +84,8 @@ import static org.apache.dubbo.common.constants.CommonConstants.VERSION_KEY;
  * for this case, url protocol = null, url host = home, url path = user1/router.js
  * </ul>
  *
+ *  URL 对象代表了统一数据模型，会贯穿服务暴露和调用的整个流程，绝对是一等公民
+ *
  * @see java.net.URL
  * @see java.net.URI
  */
