@@ -24,6 +24,7 @@ import org.apache.dubbo.rpc.RpcException;
 import java.util.List;
 
 /**
+ * 即路由器，根据路由规则在一组 Invoker 中选出符合规则的一部分 Invoker
  * Router. (SPI, Prototype, ThreadSafe)
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Routing">Routing</a>

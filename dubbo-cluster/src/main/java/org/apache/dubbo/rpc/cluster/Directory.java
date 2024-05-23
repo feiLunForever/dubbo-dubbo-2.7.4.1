@@ -24,6 +24,7 @@ import org.apache.dubbo.rpc.RpcException;
 import java.util.List;
 
 /**
+ * 即目录，代表一个集合，内部包含了一组 Invoker 对象
  * Directory. (SPI, Prototype, ThreadSafe)
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Directory_service">Directory Service</a>

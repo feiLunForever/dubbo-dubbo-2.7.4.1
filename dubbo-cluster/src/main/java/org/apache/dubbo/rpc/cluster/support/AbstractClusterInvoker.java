@@ -125,6 +125,12 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         }
         String methodName = invocation == null ? StringUtils.EMPTY : invocation.getMethodName();
 
+        /**
+         * 粘滞连接（Sticky Connection），就是为每一次请求维护一个状态，确保始终由同一个服务提供者对来自同一客户端的请求进行响应。
+         * 类似于  IP 哈希负载均衡算法
+         * 使用粘滞连接的目的是减少重复创建连接的成本，提高远程调用的效率
+         * 可以通过 URL 传入的“sticky”参数对该行为进行控制
+         */
         boolean sticky = invokers.get(0).getUrl()
                 .getMethodParameter(methodName, CLUSTER_STICKY_KEY, DEFAULT_CLUSTER_STICKY);
 
@@ -232,6 +238,12 @@ public abstract class AbstractClusterInvoker<T> implements Invoker<T> {
         return null;
     }
 
+    /**
+     * 主要步骤包括从 Directory 获得 Invoker 列表、基于 LoadBalance 实现负载均衡，并基于 doInvoke 方法完成在远程调用中嵌入容错机制
+     * @param invocation
+     * @return
+     * @throws RpcException
+     */
     @Override
     public Result invoke(final Invocation invocation) throws RpcException {
         checkWhetherDestroyed(); // 检查是否已销毁

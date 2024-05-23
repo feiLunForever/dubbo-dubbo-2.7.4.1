@@ -77,7 +77,7 @@ public class FailoverClusterInvoker<T> extends AbstractClusterInvoker<T> {
                 checkWhetherDestroyed(); // 校验是否已销毁
                 copyInvokers = list(invocation); // 重新获取可用的invokers
                 // check again
-                checkInvokers(copyInvokers, invocation); // 再次检查
+                checkInvokers(copyInvokers, invocation); // 重新检查这些Invoker对象
             }
             // 筛选出唯一的Invoker，用于后面的远程调用
             // 内部包含负载均衡算法等逻辑

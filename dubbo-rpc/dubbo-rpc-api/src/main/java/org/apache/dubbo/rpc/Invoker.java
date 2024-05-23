@@ -19,6 +19,7 @@ package org.apache.dubbo.rpc;
 import org.apache.dubbo.common.Node;
 
 /**
+ * 在 Dubbo 中，Invoker 是一个核心概念，代表的就是一个具体的可执行对象
  * Invoker. (API/SPI, Prototype, ThreadSafe)
  *
  * @see org.apache.dubbo.rpc.Protocol#refer(Class, org.apache.dubbo.common.URL)
@@ -35,6 +36,9 @@ public interface Invoker<T> extends Node {
     Class<T> getInterface();
 
     /**
+     *
+     * 主要步骤包括从 Directory 获得 Invoker 列表、基于 LoadBalance 实现负载均衡，并基于 doInvoke 方法完成在远程调用中嵌入容错机制
+     *
      * invoke.
      *
      * @param invocation

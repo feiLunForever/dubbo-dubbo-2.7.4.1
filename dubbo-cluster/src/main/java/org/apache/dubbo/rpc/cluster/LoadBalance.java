@@ -27,6 +27,7 @@ import org.apache.dubbo.rpc.cluster.loadbalance.RandomLoadBalance;
 import java.util.List;
 
 /**
+ * 即负载均衡，对经过 Router 过滤之后的一部分 Invoker 执行各种负载均衡算法，从而确定一个具体的 Invoker
  * LoadBalance. (SPI, Singleton, ThreadSafe)
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Load_balancing_(computing)">Load-Balancing</a>

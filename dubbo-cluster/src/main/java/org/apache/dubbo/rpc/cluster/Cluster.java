@@ -23,6 +23,8 @@ import org.apache.dubbo.rpc.RpcException;
 import org.apache.dubbo.rpc.cluster.support.FailoverCluster;
 
 /**
+ * 即集群，从 Directory 中获取一组 Invoker，并对外伪装成一个 Invoker。
+ * 这样，我们在使用 Cluster 时就像是在使用一个 Invoker 一样，而在这背后则隐藏了容错机制
  * Cluster. (SPI, Singleton, ThreadSafe)
  * <p>
  * <a href="http://en.wikipedia.org/wiki/Computer_cluster">Cluster</a>
