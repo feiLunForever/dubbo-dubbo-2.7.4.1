@@ -107,7 +107,7 @@ final public class MockInvoker<T> implements Invoker<T> {
             throw new RpcException(new IllegalAccessException("mock can not be null. url :" + url));
         }
         mock = normalizeMock(URL.decode(mock));
-        if (mock.startsWith(RETURN_PREFIX)) {
+        if (mock.startsWith(RETURN_PREFIX)) { // 如果是包含返回值的"return"配置
             mock = mock.substring(RETURN_PREFIX.length()).trim();
             try {
                 Type[] returnTypes = RpcUtils.getReturnTypes(invocation);
@@ -117,17 +117,17 @@ final public class MockInvoker<T> implements Invoker<T> {
                 throw new RpcException("mock return invoke error. method :" + invocation.getMethodName()
                         + ", mock:" + mock + ", url: " + url, ew);
             }
-        } else if (mock.startsWith(THROW_PREFIX)) {
+        } else if (mock.startsWith(THROW_PREFIX)) { // 如果是"throw"配置
             mock = mock.substring(THROW_PREFIX.length()).trim();
             if (StringUtils.isBlank(mock)) {
-                throw new RpcException("mocked exception for service degradation.");
+                throw new RpcException("mocked exception for service degradation."); // 抛出Mock异常
             } else { // user customized class
                 Throwable t = getThrowable(mock);
-                throw new RpcException(RpcException.BIZ_EXCEPTION, t);
+                throw new RpcException(RpcException.BIZ_EXCEPTION, t); // 抛出业务异常
             }
-        } else { //impl mock
+        } else { // 如果是自定义Mock类
             try {
-                Invoker<T> invoker = getInvoker(mock);
+                Invoker<T> invoker = getInvoker(mock); // 调用Mock类的invoke方法并返回
                 return invoker.invoke(invocation);
             } catch (Throwable t) {
                 throw new RpcException("Failed to create mock implementation class " + mock, t);

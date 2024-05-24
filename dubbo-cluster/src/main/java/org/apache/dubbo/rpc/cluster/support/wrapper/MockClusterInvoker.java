@@ -68,6 +68,14 @@ public class MockClusterInvoker<T> implements Invoker<T> {
         return directory.getInterface();
     }
 
+    /**
+     * 如果没有 Mock 配置，就不执行 Mock；
+     * 如果是以“force”开头，那么就直接返回 Mock 对象而不发起远程调用请求；
+     * 如果以“fail”开头，意味着进入失败 Mock 处理流程，即正常发起远程调用请求，如果失败则抛出了非业务异常。
+     * @param invocation
+     * @return
+     * @throws RpcException
+     */
     @Override
     public Result invoke(Invocation invocation) throws RpcException {
         Result result = null;
@@ -82,9 +90,11 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                 logger.warn("force-mock: " + invocation.getMethodName() + " force-mock enabled , url : " + directory.getUrl());
             }
             // 强制执行mock接口
+            // 如果以 force 开头，直接 Mock，不发起远程调用请求
             result = doMockInvoke(invocation, null);
         } else {
-            //fail-mock
+            // fail-mock
+            // 如果以 fail 开头，进入失败 Mock，即正常发起远程调用请求，如果失败则抛出了非业务异常
             try {
                 result = this.invoker.invoke(invocation);
 
@@ -93,7 +103,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                     RpcException rpcException= (RpcException)result.getException();
                     if(rpcException.isBiz()){
                         throw  rpcException;
-                    }else {
+                    } else {
                         result = doMockInvoke(invocation, rpcException);
                     }
                 }
@@ -106,6 +116,7 @@ public class MockClusterInvoker<T> implements Invoker<T> {
                 if (logger.isWarnEnabled()) {
                     logger.warn("fail-mock: " + invocation.getMethodName() + " fail-mock enabled , url : " + directory.getUrl(), e);
                 }
+                // 如果捕获到非业务异常，则调用 doMockInvoke 方法返回结果
                 result = doMockInvoke(invocation, e);
             }
         }
