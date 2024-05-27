@@ -32,11 +32,7 @@ import org.apache.dubbo.remoting.zookeeper.ZookeeperClient;
 import org.apache.dubbo.remoting.zookeeper.ZookeeperTransporter;
 import org.apache.dubbo.rpc.RpcException;
 
-import java.util.ArrayList;
-import java.util.HashMap;
-import java.util.List;
-import java.util.Map;
-import java.util.Set;
+import java.util.*;
 import java.util.concurrent.ConcurrentHashMap;
 import java.util.concurrent.ConcurrentMap;
 
@@ -82,8 +78,8 @@ public class ZookeeperRegistry extends FailbackRegistry {
             group = PATH_SEPARATOR + group;
         }
         this.root = group;
-        zkClient = zookeeperTransporter.connect(url);
-        zkClient.addStateListener((state) -> {
+        zkClient = zookeeperTransporter.connect(url); // 建立与Zookeeper的连接
+        zkClient.addStateListener((state) -> { // 添加状态监听器
             if (state == StateListener.RECONNECTED) {
                 logger.warn("Trying to fetch the latest urls, in case there're provider changes during connection loss.\n" +
                         " Since ephemeral ZNode will not get deleted for a connection lose, " +
@@ -125,8 +121,8 @@ public class ZookeeperRegistry extends FailbackRegistry {
     @Override
     public void doRegister(URL url) {
         try {
-            //在/dubbo/接口全限定名/provider/下创建当前服务的临时节点
-            //临时节点包含了当前服务信息，如应用名、接口名、方法名、版本号等
+            // 在/dubbo/接口全限定名/provider/下创建当前服务的临时节点
+            // 临时节点包含了当前服务信息，如应用名、接口名、方法名、版本号等
             // url --> dubbo://192.168.1.12:20880/org.apache.dubbo.demo.DemoService?anyhost=true&application=demo-provider&bean.name=org.apache.dubbo.demo.DemoService&deprecated=false&dubbo=2.0.2&dynamic=true&generic=false&interface=org.apache.dubbo.demo.DemoService&methods=sayHello&pid=51508&release=&side=provider&timestamp=1703927608630
             // toUrlPath --> /dubbo/org.apache.dubbo.demo.DemoService/providers/dubbo%3A%2F%2F10.67.72.242%3A20880%2Forg.apache.dubbo.demo.DemoService%3Fanyhost%3Dtrue%26application%3Ddemo-provider%26bean.name%3Dorg.apache.dubbo.demo.DemoService%26deprecated%3Dfalse%26dubbo%3D2.0.2%26dynamic%3Dtrue%26generic%3Dfalse%26interface%3Dorg.apache.dubbo.demo.DemoService%26methods%3DsayHello%26pid%3D28805%26release%3D%26side%3Dprovider%26timestamp%3D1704868041760
             zkClient.create(toUrlPath(url), url.getParameter(DYNAMIC_KEY, true));
@@ -157,7 +153,7 @@ public class ZookeeperRegistry extends FailbackRegistry {
                     listeners = zkListeners.get(url);
                 }
                 ChildListener zkListener = listeners.get(listener);
-                if (zkListener == null) {
+                if (zkListener == null) { // 添加子节点监听器
                     listeners.putIfAbsent(listener, (parentPath, currentChilds) -> {
                         for (String child : currentChilds) {
                             child = URL.decode(child);
@@ -226,10 +222,10 @@ public class ZookeeperRegistry extends FailbackRegistry {
             if (zkListener != null) {
                 if (ANY_VALUE.equals(url.getServiceInterface())) {
                     String root = toRootPath();
-                    zkClient.removeChildListener(root, zkListener);
+                    zkClient.removeChildListener(root, zkListener); // 取消子节点监听器
                 } else {
                     for (String path : toCategoriesPath(url)) {
-                        zkClient.removeChildListener(path, zkListener);
+                        zkClient.removeChildListener(path, zkListener);  // 取消子节点监听器
                     }
                 }
             }

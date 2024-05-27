@@ -83,6 +83,7 @@ public interface RegistryService {
     void unsubscribe(URL url, NotifyListener listener);
 
     /**
+     * 根据URL查询对应的注册信息
      * Query the registered data that matches the conditions. Corresponding to the push mode of the subscription, this is the pull mode and returns only one result.
      *
      * @param url Query condition, is not allowed to be empty, e.g. consumer://10.20.153.10/org.apache.dubbo.foo.BarService?version=1.0.0&application=kylin
